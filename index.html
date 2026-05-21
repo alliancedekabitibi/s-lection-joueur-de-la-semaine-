@@ -35,9 +35,9 @@
     border-bottom: 1px solid #e7e5e4;
   }
   .status { font-size: 13px; color: #78716c; margin: 0; }
-  .week-control { display: flex; gap: 8px; align-items: center; }
-  .week-control label { font-size: 13px; color: #78716c; }
-  select, input[type="text"], textarea, button {
+  .top-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .top-controls label { font-size: 13px; color: #78716c; }
+  select, input[type="text"], input[type="email"], input[type="password"], textarea, button {
     font-family: inherit;
     font-size: 14px;
     padding: 8px 12px;
@@ -46,7 +46,7 @@
     background: #fff;
     color: #1a1a1a;
   }
-  select:focus, input[type="text"]:focus, textarea:focus {
+  select:focus, input:focus, textarea:focus {
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -57,12 +57,13 @@
     transition: all 0.15s;
   }
   button:hover { background: #f5f5f4; border-color: #a8a29e; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
   button.primary {
     background: #2563eb;
     color: #fff;
     border-color: #2563eb;
   }
-  button.primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+  button.primary:hover:not(:disabled) { background: #1d4ed8; border-color: #1d4ed8; }
   button.icon-btn {
     padding: 6px 10px;
     background: transparent;
@@ -70,6 +71,24 @@
     color: #78716c;
   }
   button.icon-btn:hover { color: #dc2626; background: #fef2f2; }
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .user-badge {
+    padding: 3px 10px;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .user-badge.guest {
+    background: #f5f5f4;
+    color: #78716c;
+  }
   .tabs {
     display: flex;
     gap: 4px;
@@ -100,7 +119,7 @@
     gap: 12px;
     margin-bottom: 16px;
   }
-  .form-row label {
+  .form-row label, .team-box label {
     font-size: 12px;
     color: #78716c;
     display: block;
@@ -128,17 +147,10 @@
     margin: 0 0 10px;
     font-size: 13px;
     font-weight: 600;
-    color: #1a1a1a;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-  .team-box label {
-    font-size: 12px;
-    color: #78716c;
-    display: block;
-    margin-bottom: 4px;
-    margin-top: 8px;
-  }
+  .team-box label { margin-top: 8px; }
   .team-box select { width: 100%; margin-bottom: 8px; }
   .team-box textarea {
     width: 100%;
@@ -157,12 +169,7 @@
     font-size: 11px;
   }
   .detect-badge.empty { background: #f5f5f4; color: #78716c; }
-  .button-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-  }
+  .button-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .alert {
     padding: 12px 16px;
     border-radius: 8px;
@@ -171,6 +178,7 @@
   }
   .alert-success { background: #dcfce7; color: #166534; }
   .alert-danger { background: #fee2e2; color: #991b1b; }
+  .alert-info { background: #dbeafe; color: #1e40af; }
   .stats-table {
     width: 100%;
     border-collapse: collapse;
@@ -249,87 +257,85 @@
     cursor: pointer;
     margin-bottom: 6px;
     background: #fafaf9;
-    transition: background 0.1s;
   }
   .pick-row:hover { background: #f5f5f4; }
   .pick-row.selected { background: #dbeafe; }
+  .pick-row.read-only { cursor: default; }
+  .pick-row.read-only:hover { background: #fafaf9; }
+  .pick-row.read-only.selected:hover { background: #dbeafe; }
   .pick-row .name {
-    flex: 1;
-    min-width: 0;
-    font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex: 1; min-width: 0;
+    font-size: 14px; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .pick-row .team {
-    font-size: 11px;
-    color: #78716c;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 11px; color: #78716c;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .pick-row .stats {
-    font-size: 11px;
-    color: #78716c;
-    text-align: right;
-    white-space: nowrap;
+    font-size: 11px; color: #78716c;
+    text-align: right; white-space: nowrap;
   }
-  .pick-row .stats strong {
-    color: #1a1a1a;
-    font-size: 14px;
-    display: block;
-  }
+  .pick-row .stats strong { color: #1a1a1a; font-size: 14px; display: block; }
   .game-card {
-    background: #fff;
-    border: 1px solid #e7e5e4;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-bottom: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
+    background: #fff; border: 1px solid #e7e5e4; border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
   }
   .cat-pill {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    display: inline-block; padding: 3px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
   }
   .cat-H2 { background: #dbeafe; color: #1e40af; }
   .cat-H3 { background: #ede9fe; color: #5b21b6; }
   .cat-F2 { background: #fce7f3; color: #9d174d; }
   .cat-F3 { background: #d1fae5; color: #065f46; }
   .empty-state {
-    font-size: 14px;
-    color: #78716c;
-    padding: 32px;
-    text-align: center;
-    background: #fafaf9;
-    border-radius: 8px;
+    font-size: 14px; color: #78716c;
+    padding: 32px; text-align: center;
+    background: #fafaf9; border-radius: 8px;
   }
   .history-card {
-    background: #fff;
-    border: 1px solid #e7e5e4;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 12px;
+    background: #fff; border: 1px solid #e7e5e4; border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 12px;
   }
   .history-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 10px;
-    margin-top: 8px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px; margin-top: 8px;
   }
-  .history-cell {
-    padding: 10px 12px;
-    background: #fafaf9;
+  .history-cell { padding: 10px 12px; background: #fafaf9; border-radius: 8px; }
+
+  /* Login modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 380px;
+    width: 100%;
+  }
+  .modal h2 { margin: 0 0 16px; font-size: 18px; }
+  .modal label {
+    font-size: 12px; color: #78716c;
+    display: block; margin-bottom: 4px; margin-top: 12px;
+  }
+  .modal input { width: 100%; }
+  .read-only-banner {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 10px 14px;
     border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
   }
+
   @media (max-width: 600px) {
     body { padding: 10px; }
     .container { padding: 16px; }
@@ -343,24 +349,35 @@
   <div class="header">
     <div>
       <h1>🏒 Joueurs de la semaine</h1>
-      <p class="status" id="status-line">Chargement…</p>
+      <p class="status" id="status-line">Connexion à Firebase…</p>
     </div>
-    <div class="week-control">
-      <label>Semaine</label>
-      <select id="week-select" style="min-width: 90px;"></select>
-      <button id="new-week-btn" title="Nouvelle semaine">+ Nouvelle</button>
+    <div class="top-controls">
+      <span id="user-display" class="user-info">
+        <span id="user-badge" class="user-badge guest">Mode invité</span>
+      </span>
+      <button id="auth-btn">🔐 Connexion</button>
     </div>
   </div>
 
+  <div class="top-controls" style="margin-bottom: 16px;">
+    <label>Semaine</label>
+    <select id="week-select" style="min-width: 90px;"></select>
+    <button id="new-week-btn" class="admin-only" title="Nouvelle semaine" style="display:none;">+ Nouvelle</button>
+  </div>
+
+  <div id="read-only-banner" class="read-only-banner" style="display:none;">
+    👁 Mode lecture seule — Connecte-toi comme administrateur pour modifier les données.
+  </div>
+
   <div class="tabs">
-    <button class="tab-btn active" data-tab="add">➕ Ajouter une partie</button>
+    <button class="tab-btn admin-only active" data-tab="add" style="display:none;">➕ Ajouter une partie</button>
     <button class="tab-btn" data-tab="games">📋 Parties</button>
     <button class="tab-btn" data-tab="totals">📊 Totaux</button>
     <button class="tab-btn" data-tab="selection">🏆 Sélections</button>
     <button class="tab-btn" data-tab="history">🕒 Historique</button>
   </div>
 
-  <div id="tab-add" class="tab-content">
+  <div id="tab-add" class="tab-content admin-only" style="display:none;">
     <div class="form-row">
       <div>
         <label>Division</label>
@@ -395,9 +412,7 @@
     <div id="save-result"></div>
   </div>
 
-  <div id="tab-games" class="tab-content" style="display:none;">
-    <div id="games-list"></div>
-  </div>
+  <div id="tab-games" class="tab-content"><div id="games-list"></div></div>
 
   <div id="tab-totals" class="tab-content" style="display:none;">
     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
@@ -410,7 +425,7 @@
   </div>
 
   <div id="tab-selection" class="tab-content" style="display:none;">
-    <p style="font-size: 13px; color: #78716c; margin: 0 0 16px;">Top 3 par division selon les totaux de la semaine. Clique sur un joueur pour le couronner.</p>
+    <p style="font-size: 13px; color: #78716c; margin: 0 0 16px;">Top 3 par division selon les totaux de la semaine. <span class="admin-only">Clique sur un joueur pour le couronner.</span></p>
     <div id="selection-grid" class="top-grid"></div>
   </div>
 
@@ -419,8 +434,57 @@
   </div>
 </div>
 
+<!-- LOGIN MODAL -->
+<div id="login-modal" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>🔐 Connexion administrateur</h2>
+    <label>Courriel</label>
+    <input type="email" id="login-email" placeholder="admin@example.com" />
+    <label>Mot de passe</label>
+    <input type="password" id="login-password" />
+    <div id="login-error" class="alert alert-danger" style="display:none;"></div>
+    <div class="button-row" style="margin-top:16px;">
+      <button id="login-submit" class="primary">Se connecter</button>
+      <button id="login-cancel">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase v10 modular SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+// ============================================================
+// 🔥 FIREBASE CONFIG — REMPLACE PAR TA PROPRE CONFIG (étape 4 du guide)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAxd4VyQLVxJqpfrU1do9u9V3li7R-6le4",
+  authDomain: "joueurs-semaine-dek.firebaseapp.com",
+  databaseURL: "https://joueurs-semaine-dek-default-rtdb.firebaseio.com",
+  projectId: "joueurs-semaine-dek",
+  storageBucket: "joueurs-semaine-dek.firebasestorage.app",
+  messagingSenderId: "1080925601734",
+  appId: "1:1080925601734:web:7e14a6684c238182eebcc7",
+  measurementId: "G-9LNRQH0MV0"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Expose pour usage global dans le script non-module
+window._fb = { auth, db, doc, setDoc, deleteDoc, collection, onSnapshot, query, where, getDocs, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
 <script>
+window.addEventListener('firebase-ready', () => {
 (function() {
+  const { auth, db, doc, setDoc, deleteDoc, collection, onSnapshot, signInWithEmailAndPassword, signOut, onAuthStateChanged } = window._fb;
+
+  // ===== DIVISIONS & TEAMS =====
   const DIVISIONS = [
     { code: 'H2', name: 'Thibault Amos', teams: ['Hyundai Amos', 'Bar chez Frid', 'Hamel Arpentage', 'Pikogan Maikan', 'McDo'] },
     { code: 'H3', name: 'McMines', teams: ['Kirk Hockey Club', 'Nortech solutions', 'comz', 'La Brosse', 'Rihnolining', 'Les supers amis', 'Deshaies', 'Roteux', 'Le Moose', 'Flamingos', 'LMS Industrie', 'Black Knights'] },
@@ -430,40 +494,145 @@
   const CATS = DIVISIONS.map(d => d.code);
   const TEAMS_BY_CAT = Object.fromEntries(DIVISIONS.map(d => [d.code, d.teams]));
   const DIV_NAME = Object.fromEntries(DIVISIONS.map(d => [d.code, d.name]));
-  const STORAGE_KEY = 'dek-joueurs-semaine-v2';
 
-  let state = { currentWeek: 2, weeks: {} };
-  let activeTab = 'add';
+  // ===== STATE =====
+  let weeksData = {}; // { weekNum: { games: [], selections: {} } }
+  let currentWeek = 2;
+  let activeTab = 'games';
+  let isAdmin = false;
+  let unsubscribes = [];
 
-  function save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      updateStatus();
-    } catch(e) { document.getElementById('status-line').textContent = 'Erreur de sauvegarde'; }
-  }
-  function load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) state = JSON.parse(raw);
-    } catch(e) {}
-    if (!state.weeks[state.currentWeek]) state.weeks[state.currentWeek] = { games: [], selections: {} };
-  }
-  function getWeek(w) {
-    if (!state.weeks[w]) state.weeks[w] = { games: [], selections: {} };
-    if (!state.weeks[w].games) state.weeks[w].games = [];
-    if (!state.weeks[w].selections) state.weeks[w].selections = {};
-    return state.weeks[w];
-  }
-  function updateStatus() {
-    const wd = getWeek(state.currentWeek);
-    document.getElementById('status-line').textContent = `Semaine ${state.currentWeek} · ${wd.games.length} partie(s) enregistrée(s)`;
-  }
+  // ===== HELPERS =====
   function uid() { return 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
   function escapeHtml(s) {
     return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   }
   function playerKey(p) { return (p.name || '').trim().toLowerCase(); }
+  function getWeek(w) {
+    if (!weeksData[w]) weeksData[w] = { games: [], selections: {} };
+    return weeksData[w];
+  }
 
+  // ===== AUTH UI =====
+  function updateAdminUI() {
+    document.querySelectorAll('.admin-only').forEach(el => {
+      el.style.display = isAdmin ? '' : 'none';
+    });
+    document.getElementById('read-only-banner').style.display = isAdmin ? 'none' : '';
+    // Si pas admin, basculer hors de l'onglet "Ajouter" si actif
+    if (!isAdmin && activeTab === 'add') {
+      activeTab = 'games';
+      switchTab('games');
+    }
+    // Re-render pour cacher/montrer les boutons supprimer
+    render();
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    isAdmin = !!user;
+    const badge = document.getElementById('user-badge');
+    const authBtn = document.getElementById('auth-btn');
+    if (user) {
+      badge.textContent = '✓ ' + (user.email || 'Admin');
+      badge.className = 'user-badge';
+      authBtn.textContent = '🚪 Déconnexion';
+    } else {
+      badge.textContent = 'Mode invité';
+      badge.className = 'user-badge guest';
+      authBtn.textContent = '🔐 Connexion';
+    }
+    updateAdminUI();
+  });
+
+  document.getElementById('auth-btn').addEventListener('click', () => {
+    if (isAdmin) {
+      if (confirm('Se déconnecter?')) signOut(auth);
+    } else {
+      document.getElementById('login-error').style.display = 'none';
+      document.getElementById('login-modal').style.display = 'flex';
+      document.getElementById('login-email').focus();
+    }
+  });
+
+  document.getElementById('login-cancel').addEventListener('click', () => {
+    document.getElementById('login-modal').style.display = 'none';
+  });
+
+  document.getElementById('login-submit').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errorDiv = document.getElementById('login-error');
+    errorDiv.style.display = 'none';
+    if (!email || !password) {
+      errorDiv.textContent = 'Entre ton courriel et ton mot de passe.';
+      errorDiv.style.display = 'block';
+      return;
+    }
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      document.getElementById('login-modal').style.display = 'none';
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-password').value = '';
+    } catch (e) {
+      errorDiv.textContent = 'Erreur : ' + (e.code === 'auth/invalid-credential' ? 'Courriel ou mot de passe incorrect.' : e.message);
+      errorDiv.style.display = 'block';
+    }
+  });
+
+  document.getElementById('login-password').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.getElementById('login-submit').click();
+  });
+
+  // ===== FIRESTORE SYNC =====
+  function subscribeToWeeks() {
+    // Subscribe à la collection "weeks". Chaque doc = une semaine.
+    const unsub = onSnapshot(collection(db, 'weeks'), (snap) => {
+      weeksData = {};
+      snap.forEach(d => {
+        weeksData[d.id] = d.data();
+      });
+      // Assure que la semaine courante existe localement
+      getWeek(currentWeek);
+      updateStatus();
+      renderWeekSelect();
+      render();
+    }, (err) => {
+      console.error('Erreur Firestore:', err);
+      document.getElementById('status-line').textContent = 'Erreur de connexion à Firebase';
+    });
+    unsubscribes.push(unsub);
+  }
+
+  async function saveWeek(w) {
+    if (!isAdmin) return;
+    try {
+      const wd = getWeek(w);
+      await setDoc(doc(db, 'weeks', String(w)), {
+        games: wd.games || [],
+        selections: wd.selections || {}
+      });
+    } catch(e) {
+      console.error(e);
+      alert('Erreur de sauvegarde : ' + e.message);
+    }
+  }
+
+  async function deleteWeekDoc(w) {
+    if (!isAdmin) return;
+    try {
+      await deleteDoc(doc(db, 'weeks', String(w)));
+    } catch(e) {
+      alert('Erreur de suppression : ' + e.message);
+    }
+  }
+
+  function updateStatus() {
+    const wd = getWeek(currentWeek);
+    const games = wd.games || [];
+    document.getElementById('status-line').textContent = `Semaine ${currentWeek} · ${games.length} partie(s)`;
+  }
+
+  // ===== SELECTORS =====
   function populateCatSelects() {
     const opts = DIVISIONS.map(d => `<option value="${d.code}">${d.code} — ${escapeHtml(d.name)}</option>`).join('');
     ['g-cat', 't-cat'].forEach(id => {
@@ -479,6 +648,7 @@
     document.getElementById('team2-select').innerHTML = opts;
   }
 
+  // ===== PARSER =====
   function parseGame(raw) {
     if (!raw || !raw.trim()) return [];
     const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -542,41 +712,46 @@
     }
   }
 
+  // ===== RENDER =====
   function renderGames() {
     const wrap = document.getElementById('games-list');
-    const wd = getWeek(state.currentWeek);
-    if (wd.games.length === 0) {
-      wrap.innerHTML = `<div class="empty-state">Aucune partie enregistrée pour la semaine ${state.currentWeek}.</div>`;
+    const wd = getWeek(currentWeek);
+    const games = wd.games || [];
+    if (games.length === 0) {
+      wrap.innerHTML = `<div class="empty-state">Aucune partie enregistrée pour la semaine ${currentWeek}.</div>`;
       return;
     }
     let html = '';
     CATS.forEach(cat => {
-      const cgames = wd.games.filter(g => g.cat === cat);
+      const cgames = games.filter(g => g.cat === cat);
       if (cgames.length === 0) return;
       html += `<h3 style="margin: 16px 0 8px; font-size: 14px;"><span class="cat-pill cat-${cat}">${cat}</span> ${escapeHtml(DIV_NAME[cat])} <span style="color:#78716c; font-weight:400; font-size:12px;">— ${cgames.length} partie(s)</span></h3>`;
       cgames.forEach(g => {
         const totalPlayers = (g.team1Players || []).length + (g.team2Players || []).length;
-        html += `<div class="game-card"><div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:500;">${escapeHtml(g.team1)} <span style="color:#78716c; font-weight:400;">vs</span> ${escapeHtml(g.team2)}</div><div style="font-size:11px; color:#a8a29e; margin-top:2px;">${totalPlayers} joueurs au total</div></div><button class="icon-btn" data-del-game="${g.id}" title="Supprimer">🗑</button></div>`;
+        html += `<div class="game-card"><div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:500;">${escapeHtml(g.team1)} <span style="color:#78716c; font-weight:400;">vs</span> ${escapeHtml(g.team2)}</div><div style="font-size:11px; color:#a8a29e; margin-top:2px;">${totalPlayers} joueurs au total</div></div>`;
+        if (isAdmin) html += `<button class="icon-btn" data-del-game="${g.id}" title="Supprimer">🗑</button>`;
+        html += `</div>`;
       });
     });
     wrap.innerHTML = html;
-    wrap.querySelectorAll('[data-del-game]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (confirm('Supprimer cette partie?')) {
-          wd.games = wd.games.filter(g => g.id !== btn.dataset.delGame);
-          save();
-          render();
-        }
+    if (isAdmin) {
+      wrap.querySelectorAll('[data-del-game]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (confirm('Supprimer cette partie?')) {
+            wd.games = (wd.games || []).filter(g => g.id !== btn.dataset.delGame);
+            await saveWeek(currentWeek);
+          }
+        });
       });
-    });
+    }
   }
 
   function aggregateForCat(weekNum, cat) {
     const wd = getWeek(weekNum);
-    const cgames = wd.games.filter(g => g.cat === cat);
+    const games = (wd.games || []).filter(g => g.cat === cat);
     const map = {};
     function addPlayers(players, teamName) {
-      players.forEach(p => {
+      (players || []).forEach(p => {
         const k = playerKey(p);
         if (!map[k]) map[k] = { key: k, name: p.name, teams: new Set(), jerseys: new Set(), gp:0, g:0, a:0, pts:0, pim:0, ppg:0 };
         if (teamName) map[k].teams.add(teamName);
@@ -589,9 +764,9 @@
         map[k].ppg += p.ppg;
       });
     }
-    cgames.forEach(game => {
-      addPlayers(game.team1Players || [], game.team1);
-      addPlayers(game.team2Players || [], game.team2);
+    games.forEach(game => {
+      addPlayers(game.team1Players, game.team1);
+      addPlayers(game.team2Players, game.team2);
     });
     return Object.values(map).map(x => ({
       ...x,
@@ -603,7 +778,7 @@
   function renderTotals() {
     const cat = document.getElementById('t-cat').value;
     const wrap = document.getElementById('totals-table-wrap');
-    const players = aggregateForCat(state.currentWeek, cat);
+    const players = aggregateForCat(currentWeek, cat);
     document.getElementById('t-count').textContent = `${players.length} joueurs en ${cat}`;
     if (players.length === 0) {
       wrap.innerHTML = `<div class="empty-state">Aucune partie ${cat} enregistrée cette semaine.</div>`;
@@ -620,12 +795,13 @@
 
   function renderSelection() {
     const grid = document.getElementById('selection-grid');
-    const wd = getWeek(state.currentWeek);
+    const wd = getWeek(currentWeek);
+    const selections = wd.selections || {};
     let html = '';
     CATS.forEach(cat => {
-      const players = aggregateForCat(state.currentWeek, cat);
+      const players = aggregateForCat(currentWeek, cat);
       const top3 = players.slice(0, 3);
-      const selKey = wd.selections[cat];
+      const selKey = selections[cat];
       const selected = selKey ? players.find(p => p.key === selKey) : null;
       html += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3>`;
       if (selected) html += `<span class="winner-badge">🏆 ${escapeHtml(selected.name)}</span>`;
@@ -635,40 +811,43 @@
       } else {
         top3.forEach((p, i) => {
           const isSel = selKey === p.key;
-          html += `<div class="pick-row ${isSel ? 'selected' : ''}" data-cat="${cat}" data-key="${escapeHtml(p.key)}">`;
+          const rowClass = `pick-row${isSel ? ' selected' : ''}${isAdmin ? '' : ' read-only'}`;
+          html += `<div class="${rowClass}" ${isAdmin ? `data-cat="${cat}" data-key="${escapeHtml(p.key)}"` : ''}>`;
           html += `<span class="medal medal-${i+1}">${i+1}</span>`;
           html += `<div style="flex:1; min-width:0;"><div class="name">${escapeHtml(p.name)}</div>`;
           if (p.teams) html += `<div class="team">${escapeHtml(p.teams)}</div>`;
           html += `</div><div class="stats">${p.g}B · ${p.a}A<strong>${p.pts} pts</strong></div></div>`;
         });
-        if (selected) html += `<button data-clear="${cat}" style="margin-top:10px; font-size:12px; width:100%;">Annuler la sélection</button>`;
+        if (selected && isAdmin) html += `<button data-clear="${cat}" style="margin-top:10px; font-size:12px; width:100%;">Annuler la sélection</button>`;
       }
       html += `</div>`;
     });
     grid.innerHTML = html;
-    grid.querySelectorAll('.pick-row').forEach(el => {
-      el.addEventListener('click', () => {
-        wd.selections[el.dataset.cat] = el.dataset.key;
-        save();
-        renderSelection();
+    if (isAdmin) {
+      grid.querySelectorAll('.pick-row[data-cat]').forEach(el => {
+        el.addEventListener('click', async () => {
+          if (!wd.selections) wd.selections = {};
+          wd.selections[el.dataset.cat] = el.dataset.key;
+          await saveWeek(currentWeek);
+        });
       });
-    });
-    grid.querySelectorAll('[data-clear]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        delete wd.selections[btn.dataset.clear];
-        save();
-        renderSelection();
+      grid.querySelectorAll('[data-clear]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (wd.selections) delete wd.selections[btn.dataset.clear];
+          await saveWeek(currentWeek);
+        });
       });
-    });
+    }
   }
 
   function renderHistory() {
     const wrap = document.getElementById('history-list');
-    const weeks = Object.keys(state.weeks).map(Number).sort((a,b) => b-a);
+    const weeks = Object.keys(weeksData).map(Number).sort((a,b) => b-a);
     let html = '';
     weeks.forEach(w => {
-      const wd = state.weeks[w];
-      html += `<div class="history-card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong style="font-size:15px;">Semaine ${w}</strong><span style="font-size:11px; color:#a8a29e;">${(wd.games||[]).length} parties</span></div><div class="history-grid">`;
+      const wd = weeksData[w];
+      const games = wd.games || [];
+      html += `<div class="history-card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong style="font-size:15px;">Semaine ${w}</strong><span style="font-size:11px; color:#a8a29e;">${games.length} parties</span></div><div class="history-grid">`;
       CATS.forEach(cat => {
         const key = (wd.selections||{})[cat];
         const players = aggregateForCat(w, cat);
@@ -681,31 +860,34 @@
         }
         html += `</div>`;
       });
-      html += '</div><div style="margin-top:12px; display:flex; justify-content:flex-end;"><button class="icon-btn" data-del-week="' + w + '">🗑 Supprimer la semaine</button></div></div>';
+      html += '</div>';
+      if (isAdmin) html += `<div style="margin-top:12px; display:flex; justify-content:flex-end;"><button class="icon-btn" data-del-week="${w}">🗑 Supprimer la semaine</button></div>`;
+      html += `</div>`;
     });
     wrap.innerHTML = html || '<div class="empty-state">Aucune semaine enregistrée.</div>';
-    wrap.querySelectorAll('[data-del-week]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const w = btn.dataset.delWeek;
-        if (confirm(`Supprimer toute la semaine ${w}?`)) {
-          delete state.weeks[w];
-          if (parseInt(w) === state.currentWeek) {
-            const rem = Object.keys(state.weeks).map(Number).sort((a,b)=>a-b);
-            state.currentWeek = rem[0] || 2;
-            if (!state.weeks[state.currentWeek]) state.weeks[state.currentWeek] = { games:[], selections:{} };
+    if (isAdmin) {
+      wrap.querySelectorAll('[data-del-week]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const w = btn.dataset.delWeek;
+          if (confirm(`Supprimer toute la semaine ${w}?`)) {
+            await deleteWeekDoc(w);
+            if (parseInt(w) === currentWeek) {
+              const rem = Object.keys(weeksData).map(Number).filter(x => x !== parseInt(w)).sort((a,b)=>a-b);
+              currentWeek = rem[0] || 2;
+            }
           }
-          save();
-          render();
-        }
+        });
       });
-    });
+    }
   }
 
   function renderWeekSelect() {
     const sel = document.getElementById('week-select');
-    const weeks = Object.keys(state.weeks).map(Number).sort((a,b) => a-b);
-    if (weeks.length === 0) weeks.push(2);
-    sel.innerHTML = weeks.map(w => `<option value="${w}" ${w === state.currentWeek ? 'selected' : ''}>S ${w}</option>`).join('');
+    const weeks = Object.keys(weeksData).map(Number).sort((a,b) => a-b);
+    if (weeks.length === 0) weeks.push(currentWeek);
+    if (!weeks.includes(currentWeek)) weeks.push(currentWeek);
+    weeks.sort((a,b) => a-b);
+    sel.innerHTML = weeks.map(w => `<option value="${w}" ${w === currentWeek ? 'selected' : ''}>S ${w}</option>`).join('');
   }
 
   function clearForm() {
@@ -726,40 +908,40 @@
     else if (activeTab === 'history') renderHistory();
   }
 
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    document.getElementById('tab-' + tab).style.display = 'block';
+    activeTab = tab;
+    render();
+  }
+
   function bind() {
     document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-        activeTab = btn.dataset.tab;
-        document.getElementById('tab-' + activeTab).style.display = 'block';
-        render();
-      });
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
     document.getElementById('week-select').addEventListener('change', (e) => {
-      state.currentWeek = parseInt(e.target.value, 10);
-      getWeek(state.currentWeek);
-      save();
+      currentWeek = parseInt(e.target.value, 10);
       render();
     });
 
-    document.getElementById('new-week-btn').addEventListener('click', () => {
-      const weeks = Object.keys(state.weeks).map(Number);
+    document.getElementById('new-week-btn').addEventListener('click', async () => {
+      const weeks = Object.keys(weeksData).map(Number);
       const next = weeks.length ? Math.max(...weeks) + 1 : 2;
-      state.weeks[next] = { games: [], selections: {} };
-      state.currentWeek = next;
-      save();
+      weeksData[next] = { games: [], selections: {} };
+      currentWeek = next;
+      await saveWeek(next);
       render();
     });
 
     document.getElementById('g-cat').addEventListener('change', populateTeamSelects);
-
     document.getElementById('team1-paste').addEventListener('input', () => updateDetectBadge(1));
     document.getElementById('team2-paste').addEventListener('input', () => updateDetectBadge(2));
 
-    document.getElementById('save-game-btn').addEventListener('click', () => {
+    document.getElementById('save-game-btn').addEventListener('click', async () => {
+      if (!isAdmin) return;
       const cat = document.getElementById('g-cat').value;
       const team1 = document.getElementById('team1-select').value;
       const team2 = document.getElementById('team2-select').value;
@@ -778,19 +960,18 @@
         return;
       }
 
-      const wd = getWeek(state.currentWeek);
+      const wd = getWeek(currentWeek);
+      if (!wd.games) wd.games = [];
       wd.games.push({
         id: uid(),
-        cat,
-        team1, team2,
+        cat, team1, team2,
         team1Players, team2Players,
         ts: Date.now()
       });
-      save();
+      await saveWeek(currentWeek);
       const total = team1Players.length + team2Players.length;
-      resultDiv.innerHTML = `<div class="alert alert-success">✓ Partie enregistrée : ${escapeHtml(team1)} vs ${escapeHtml(team2)} en ${cat} (${total} joueurs au total). Tu peux en saisir une autre.</div>`;
+      resultDiv.innerHTML = `<div class="alert alert-success">✓ Partie enregistrée : ${escapeHtml(team1)} vs ${escapeHtml(team2)} en ${cat} (${total} joueurs). Synchronisée avec Firebase. ✨</div>`;
       clearForm();
-      updateStatus();
     });
 
     document.getElementById('clear-form-btn').addEventListener('click', () => {
@@ -801,12 +982,14 @@
     document.getElementById('t-cat').addEventListener('change', renderTotals);
   }
 
-  load();
+  // ===== BOOT =====
   populateCatSelects();
   populateTeamSelects();
   bind();
-  render();
+  subscribeToWeeks();
+  switchTab('games'); // par défaut, onglet visible aux invités
 })();
+});
 </script>
 
 </body>
