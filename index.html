@@ -374,6 +374,7 @@
     <button class="tab-btn" data-tab="games">📋 Parties</button>
     <button class="tab-btn" data-tab="totals">📊 Totaux</button>
     <button class="tab-btn" data-tab="selection">🏆 Sélections</button>
+    <button class="tab-btn" data-tab="goalies">🥅 Gardiens</button>
     <button class="tab-btn" data-tab="history">🕒 Historique</button>
   </div>
 
@@ -390,18 +391,24 @@
         <h4>🔵 Équipe 1</h4>
         <label>Nom de l'équipe</label>
         <select id="team1-select"></select>
-        <label>Coller les stats (format SportNinja)</label>
+        <label>Stats des joueurs (format SportNinja)</label>
         <textarea id="team1-paste" placeholder="9&#10;Alexis Fournier&#10;1  2  2  4  2  0&#10;..."></textarea>
         <div id="team1-status" class="detect-badge empty">0 joueur</div>
+        <label style="margin-top:14px;">🥅 Stats des gardiens (optionnel)</label>
+        <textarea id="team1-goalies" placeholder="33&#10;Morane Frenette&#10;1 1 0 0 0 0.850 0 45 0 33 28 5"></textarea>
+        <div id="team1-goalie-status" class="detect-badge empty">0 gardien</div>
       </div>
 
       <div class="team-box team2">
         <h4>🔴 Équipe 2</h4>
         <label>Nom de l'équipe</label>
         <select id="team2-select"></select>
-        <label>Coller les stats (format SportNinja)</label>
+        <label>Stats des joueurs (format SportNinja)</label>
         <textarea id="team2-paste" placeholder="11&#10;Joueur Adverse&#10;1  1  2  3  0  0&#10;..."></textarea>
         <div id="team2-status" class="detect-badge empty">0 joueur</div>
+        <label style="margin-top:14px;">🥅 Stats des gardiens (optionnel)</label>
+        <textarea id="team2-goalies" placeholder="1&#10;Gardien Adverse&#10;1 0 1 0 0 0.780 0 45 0 40 31 9"></textarea>
+        <div id="team2-goalie-status" class="detect-badge empty">0 gardien</div>
       </div>
     </div>
 
@@ -427,6 +434,18 @@
   <div id="tab-selection" class="tab-content" style="display:none;">
     <p style="font-size: 13px; color: #78716c; margin: 0 0 16px;">Top 3 par division classé selon la <strong>moyenne de points par match</strong>. <span class="admin-only">Clique sur un joueur pour le couronner.</span></p>
     <div id="selection-grid" class="top-grid"></div>
+  </div>
+
+  <div id="tab-goalies" class="tab-content" style="display:none;">
+    <p style="font-size: 13px; color: #78716c; margin: 0 0 16px;">Top 3 gardiens par division, classés par <strong>% d'arrêts (SV%)</strong> puis <strong>GAA</strong>. <span class="admin-only">Clique sur un gardien pour le couronner.</span> <span id="goalie-min-note" style="color:#a8a29e;"></span></p>
+    <div id="goalies-grid" class="top-grid"></div>
+    <div style="margin-top:24px;">
+      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+        <label style="font-size: 13px; color: #78716c;">Tableau complet — Division</label>
+        <select id="goalie-cat"></select>
+      </div>
+      <div id="goalies-table-wrap"></div>
+    </div>
   </div>
 
   <div id="tab-history" class="tab-content" style="display:none;">
@@ -509,7 +528,8 @@ window.addEventListener('firebase-ready', () => {
   }
   function playerKey(p) { return (p.name || '').trim().toLowerCase(); }
   function getWeek(w) {
-    if (!weeksData[w]) weeksData[w] = { games: [], selections: {} };
+    if (!weeksData[w]) weeksData[w] = { games: [], selections: {}, goalieSelections: {} };
+    if (!weeksData[w].goalieSelections) weeksData[w].goalieSelections = {};
     return weeksData[w];
   }
 
@@ -609,7 +629,8 @@ window.addEventListener('firebase-ready', () => {
       const wd = getWeek(w);
       await setDoc(doc(db, 'weeks', String(w)), {
         games: wd.games || [],
-        selections: wd.selections || {}
+        selections: wd.selections || {},
+        goalieSelections: wd.goalieSelections || {}
       });
     } catch(e) {
       console.error(e);
@@ -635,7 +656,7 @@ window.addEventListener('firebase-ready', () => {
   // ===== SELECTORS =====
   function populateCatSelects() {
     const opts = DIVISIONS.map(d => `<option value="${d.code}">${d.code} — ${escapeHtml(d.name)}</option>`).join('');
-    ['g-cat', 't-cat'].forEach(id => {
+    ['g-cat', 't-cat', 'goalie-cat'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = opts;
     });
@@ -699,6 +720,69 @@ window.addEventListener('firebase-ready', () => {
     return players;
   }
 
+  // ===== PARSEUR GARDIENS =====
+  // Format SportNinja gardien: #jersey, Nom, puis 12 nombres:
+  // GP, W, L, T, OTL, SV%, SO, MIN, PIM, SA, SV, GA
+  const GOALIE_NUM_COUNT = 12;
+  // Minimum de tirs reçus dans la semaine pour figurer dans le top 3 (évite les petits échantillons)
+  const GOALIE_MIN_SHOTS = 10;
+
+  function parseGoalies(raw) {
+    if (!raw || !raw.trim()) return [];
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const headerKeys = ['player','gp','sv%','so','min','pim','sa','sv','ga','otl','#'];
+    let start = 0;
+    for (let i = 0; i < Math.min(lines.length, 14); i++) {
+      const low = lines[i].toLowerCase();
+      if (headerKeys.some(k => low === k || low.startsWith(k + ' '))) start = i + 1;
+    }
+    const useLines = lines.slice(start);
+    const tokens = [];
+    useLines.forEach(l => {
+      const parts = l.split(/[\s\t]+/).filter(Boolean);
+      parts.forEach(p => tokens.push({ text: p, isNum: /^-?\d+(\.\d+)?$/.test(p) }));
+    });
+
+    const goalies = [];
+    let i = 0;
+    while (i < tokens.length) {
+      let runStart = -1;
+      for (let j = i; j <= tokens.length - GOALIE_NUM_COUNT; j++) {
+        let allNum = true;
+        for (let k = 0; k < GOALIE_NUM_COUNT; k++) {
+          if (!tokens[j+k].isNum) { allNum = false; break; }
+        }
+        if (allNum) { runStart = j; break; }
+      }
+      if (runStart === -1) break;
+      const preTokens = tokens.slice(i, runStart);
+      if (preTokens.length === 0) { i = runStart + GOALIE_NUM_COUNT; continue; }
+      let jersey = '';
+      let nameTokens = preTokens.slice();
+      if (nameTokens.length > 0 && nameTokens[0].isNum) {
+        jersey = nameTokens[0].text;
+        nameTokens = nameTokens.slice(1);
+      }
+      nameTokens = nameTokens.filter(t => {
+        if (/^#/.test(t.text)) { jersey = t.text.replace(/^#/, ''); return false; }
+        return true;
+      });
+      const name = nameTokens.map(t => t.text).join(' ').trim();
+      const nums = tokens.slice(runStart, runStart + GOALIE_NUM_COUNT).map(t => parseFloat(t.text));
+      const [gp, w, l, tie, otl, svp, so, min, pim, sa, sv, ga] = nums;
+      if (name && name.length > 1) {
+        goalies.push({
+          jersey, name,
+          gp: gp||0, w: w||0, l: l||0, t: tie||0, otl: otl||0,
+          svp: svp||0, so: so||0, min: min||0, pim: pim||0,
+          sa: sa||0, sv: sv||0, ga: ga||0
+        });
+      }
+      i = runStart + GOALIE_NUM_COUNT;
+    }
+    return goalies;
+  }
+
   function updateDetectBadge(num) {
     const textarea = document.getElementById(`team${num}-paste`);
     const badge = document.getElementById(`team${num}-status`);
@@ -708,6 +792,19 @@ window.addEventListener('firebase-ready', () => {
       badge.className = 'detect-badge empty';
     } else {
       badge.textContent = `✓ ${players.length} joueur(s) détecté(s)`;
+      badge.className = 'detect-badge';
+    }
+  }
+
+  function updateGoalieBadge(num) {
+    const textarea = document.getElementById(`team${num}-goalies`);
+    const badge = document.getElementById(`team${num}-goalie-status`);
+    const goalies = parseGoalies(textarea.value);
+    if (goalies.length === 0) {
+      badge.textContent = '0 gardien';
+      badge.className = 'detect-badge empty';
+    } else {
+      badge.textContent = `✓ ${goalies.length} gardien(s) détecté(s)`;
       badge.className = 'detect-badge';
     }
   }
@@ -728,7 +825,8 @@ window.addEventListener('firebase-ready', () => {
       html += `<h3 style="margin: 16px 0 8px; font-size: 14px;"><span class="cat-pill cat-${cat}">${cat}</span> ${escapeHtml(DIV_NAME[cat])} <span style="color:#78716c; font-weight:400; font-size:12px;">— ${cgames.length} partie(s)</span></h3>`;
       cgames.forEach(g => {
         const totalPlayers = (g.team1Players || []).length + (g.team2Players || []).length;
-        html += `<div class="game-card"><div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:500;">${escapeHtml(g.team1)} <span style="color:#78716c; font-weight:400;">vs</span> ${escapeHtml(g.team2)}</div><div style="font-size:11px; color:#a8a29e; margin-top:2px;">${totalPlayers} joueurs au total</div></div>`;
+        const totalGoalies = (g.team1Goalies || []).length + (g.team2Goalies || []).length;
+        html += `<div class="game-card"><div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:500;">${escapeHtml(g.team1)} <span style="color:#78716c; font-weight:400;">vs</span> ${escapeHtml(g.team2)}</div><div style="font-size:11px; color:#a8a29e; margin-top:2px;">${totalPlayers} joueurs${totalGoalies ? ' · ' + totalGoalies + ' gardien(s)' : ''}</div></div>`;
         if (isAdmin) html += `<button class="icon-btn" data-del-game="${g.id}" title="Supprimer">🗑</button>`;
         html += `</div>`;
       });
@@ -774,6 +872,53 @@ window.addEventListener('firebase-ready', () => {
       jerseys: Array.from(x.jerseys).join('/'),
       ptsPerGame: x.gp > 0 ? x.pts / x.gp : 0
     })).sort((a,b) => b.ptsPerGame - a.ptsPerGame || b.pts - a.pts || b.g - a.g || b.a - a.a);
+  }
+
+  function aggregateGoaliesForCat(weekNum, cat) {
+    const wd = getWeek(weekNum);
+    const games = (wd.games || []).filter(g => g.cat === cat);
+    const map = {};
+    function addGoalies(goalies, teamName) {
+      (goalies || []).forEach(g => {
+        const k = playerKey(g);
+        if (!map[k]) map[k] = { key: k, name: g.name, teams: new Set(), jerseys: new Set(),
+          gp:0, w:0, l:0, t:0, otl:0, so:0, min:0, pim:0, sa:0, sv:0, ga:0 };
+        if (teamName) map[k].teams.add(teamName);
+        if (g.jersey) map[k].jerseys.add(g.jersey);
+        map[k].gp += g.gp;
+        map[k].w += g.w;
+        map[k].l += g.l;
+        map[k].t += g.t;
+        map[k].otl += g.otl;
+        map[k].so += g.so;
+        map[k].min += g.min;
+        map[k].pim += g.pim;
+        map[k].sa += g.sa;
+        map[k].sv += g.sv;
+        map[k].ga += g.ga;
+      });
+    }
+    games.forEach(game => {
+      addGoalies(game.team1Goalies, game.team1);
+      addGoalies(game.team2Goalies, game.team2);
+    });
+    return Object.values(map).map(x => {
+      // SV% recalculé sur les totaux de la semaine = arrêts / tirs reçus
+      const svpct = x.sa > 0 ? x.sv / x.sa : 0;
+      // GAA = buts accordés par match (basé sur les parties jouées)
+      const gaa = x.gp > 0 ? x.ga / x.gp : 0;
+      return {
+        ...x,
+        teams: Array.from(x.teams).join(', '),
+        jerseys: Array.from(x.jerseys).join('/'),
+        svpct, gaa,
+        eligible: x.sa >= GOALIE_MIN_SHOTS
+      };
+    }).sort((a,b) => {
+      // Les éligibles d'abord, puis SV% décroissant, puis GAA croissant
+      if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+      return b.svpct - a.svpct || a.gaa - b.gaa || b.sv - a.sv;
+    });
   }
 
   function renderTotals() {
@@ -841,6 +986,78 @@ window.addEventListener('firebase-ready', () => {
     }
   }
 
+  function renderGoalies() {
+    const grid = document.getElementById('goalies-grid');
+    const wd = getWeek(currentWeek);
+    if (!wd.goalieSelections) wd.goalieSelections = {};
+    const selections = wd.goalieSelections;
+    document.getElementById('goalie-min-note').textContent = `(min. ${GOALIE_MIN_SHOTS} tirs reçus pour le top 3)`;
+    let html = '';
+    CATS.forEach(cat => {
+      const goalies = aggregateGoaliesForCat(currentWeek, cat);
+      const eligibles = goalies.filter(g => g.eligible);
+      const top3 = eligibles.slice(0, 3);
+      const selKey = selections[cat];
+      const selected = selKey ? goalies.find(g => g.key === selKey) : null;
+      html += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3>`;
+      if (selected) html += `<span class="winner-badge">🥅 ${escapeHtml(selected.name)}</span>`;
+      html += `</div>`;
+      if (top3.length === 0) {
+        html += `<p style="font-size:13px; color:#78716c; margin:0;">Aucun gardien admissible.</p>`;
+      } else {
+        top3.forEach((g, i) => {
+          const isSel = selKey === g.key;
+          const rowClass = `pick-row${isSel ? ' selected' : ''}${isAdmin ? '' : ' read-only'}`;
+          html += `<div class="${rowClass}" ${isAdmin ? `data-cat="${cat}" data-key="${escapeHtml(g.key)}"` : ''}>`;
+          html += `<span class="medal medal-${i+1}">${i+1}</span>`;
+          html += `<div style="flex:1; min-width:0;"><div class="name">${escapeHtml(g.name)}</div>`;
+          if (g.teams) html += `<div class="team">${escapeHtml(g.teams)}</div>`;
+          html += `</div><div class="stats">${g.sv}/${g.sa} arr. · ${g.gaa.toFixed(2)} GAA<strong>${(g.svpct*100).toFixed(1)}% SV</strong></div></div>`;
+        });
+        if (selected && isAdmin) html += `<button data-clear="${cat}" style="margin-top:10px; font-size:12px; width:100%;">Annuler la sélection</button>`;
+      }
+      html += `</div>`;
+    });
+    grid.innerHTML = html;
+    if (isAdmin) {
+      grid.querySelectorAll('.pick-row[data-cat]').forEach(el => {
+        el.addEventListener('click', async () => {
+          if (!wd.goalieSelections) wd.goalieSelections = {};
+          wd.goalieSelections[el.dataset.cat] = el.dataset.key;
+          await saveWeek(currentWeek);
+        });
+      });
+      grid.querySelectorAll('[data-clear]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (wd.goalieSelections) delete wd.goalieSelections[btn.dataset.clear];
+          await saveWeek(currentWeek);
+        });
+      });
+    }
+    renderGoaliesTable();
+  }
+
+  function renderGoaliesTable() {
+    const cat = document.getElementById('goalie-cat').value;
+    const wrap = document.getElementById('goalies-table-wrap');
+    const goalies = aggregateGoaliesForCat(currentWeek, cat);
+    if (goalies.length === 0) {
+      wrap.innerHTML = `<div class="empty-state">Aucun gardien ${cat} enregistré cette semaine.</div>`;
+      return;
+    }
+    let html = '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Gardien</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">V</th><th style="text-align:right;">D</th><th style="text-align:right;">BL</th><th style="text-align:right;">Tirs</th><th style="text-align:right;">Arr.</th><th style="text-align:right;">BA</th><th style="text-align:right; background:#eff6ff;">SV%</th><th style="text-align:right; background:#eff6ff;">GAA</th></tr></thead><tbody>';
+    let rank = 0;
+    goalies.forEach((g) => {
+      const elig = g.eligible;
+      if (elig) rank++;
+      const cls = (elig && rank <= 3) ? `class="top${rank}"` : '';
+      const dim = elig ? '' : 'opacity:0.5;';
+      html += `<tr ${cls} style="${dim}"><td style="color:#78716c;">${elig ? rank : '–'}</td><td>${escapeHtml(g.name)}${g.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(g.jerseys)}</span>` : ''}${!elig ? ' <span style="color:#a8a29e; font-size:10px;">(échantillon faible)</span>' : ''}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(g.teams)}</td><td style="text-align:right;">${g.gp}</td><td style="text-align:right;">${g.w}</td><td style="text-align:right;">${g.l}</td><td style="text-align:right;">${g.so}</td><td style="text-align:right;">${g.sa}</td><td style="text-align:right;">${g.sv}</td><td style="text-align:right;">${g.ga}</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${(g.svpct*100).toFixed(1)}%</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${g.gaa.toFixed(2)}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+  }
+
   function renderHistory() {
     const wrap = document.getElementById('history-list');
     const weeks = Object.keys(weeksData).map(Number).sort((a,b) => b-a);
@@ -853,11 +1070,17 @@ window.addEventListener('firebase-ready', () => {
         const key = (wd.selections||{})[cat];
         const players = aggregateForCat(w, cat);
         const p = key ? players.find(x => x.key === key) : null;
+        const gKey = (wd.goalieSelections||{})[cat];
+        const goalies = aggregateGoaliesForCat(w, cat);
+        const gardien = gKey ? goalies.find(x => x.key === gKey) : null;
         html += `<div class="history-cell"><span class="cat-pill cat-${cat}">${cat}</span>`;
         if (p) {
           html += `<div style="font-size:13px; font-weight:500; margin-top:6px;">${escapeHtml(p.name)}</div><div style="font-size:11px; color:#78716c;">${p.g}B · ${p.a}A · ${p.ptsPerGame.toFixed(2)} pts/m</div>`;
         } else {
           html += `<div style="font-size:13px; color:#a8a29e; margin-top:6px;">—</div>`;
+        }
+        if (gardien) {
+          html += `<div style="font-size:12px; font-weight:500; margin-top:6px; padding-top:6px; border-top:1px solid #e7e5e4;">🥅 ${escapeHtml(gardien.name)}</div><div style="font-size:11px; color:#78716c;">${(gardien.svpct*100).toFixed(1)}% · ${gardien.gaa.toFixed(2)} GAA</div>`;
         }
         html += `</div>`;
       });
@@ -896,8 +1119,12 @@ window.addEventListener('firebase-ready', () => {
     document.getElementById('team2-select').value = '';
     document.getElementById('team1-paste').value = '';
     document.getElementById('team2-paste').value = '';
+    document.getElementById('team1-goalies').value = '';
+    document.getElementById('team2-goalies').value = '';
     updateDetectBadge(1);
     updateDetectBadge(2);
+    updateGoalieBadge(1);
+    updateGoalieBadge(2);
   }
 
   function render() {
@@ -906,6 +1133,7 @@ window.addEventListener('firebase-ready', () => {
     if (activeTab === 'games') renderGames();
     else if (activeTab === 'totals') renderTotals();
     else if (activeTab === 'selection') renderSelection();
+    else if (activeTab === 'goalies') renderGoalies();
     else if (activeTab === 'history') renderHistory();
   }
 
@@ -940,6 +1168,8 @@ window.addEventListener('firebase-ready', () => {
     document.getElementById('g-cat').addEventListener('change', populateTeamSelects);
     document.getElementById('team1-paste').addEventListener('input', () => updateDetectBadge(1));
     document.getElementById('team2-paste').addEventListener('input', () => updateDetectBadge(2));
+    document.getElementById('team1-goalies').addEventListener('input', () => updateGoalieBadge(1));
+    document.getElementById('team2-goalies').addEventListener('input', () => updateGoalieBadge(2));
 
     document.getElementById('save-game-btn').addEventListener('click', async () => {
       if (!isAdmin) return;
@@ -948,13 +1178,15 @@ window.addEventListener('firebase-ready', () => {
       const team2 = document.getElementById('team2-select').value;
       const team1Players = parseGame(document.getElementById('team1-paste').value);
       const team2Players = parseGame(document.getElementById('team2-paste').value);
+      const team1Goalies = parseGoalies(document.getElementById('team1-goalies').value);
+      const team2Goalies = parseGoalies(document.getElementById('team2-goalies').value);
       const resultDiv = document.getElementById('save-result');
 
       const errors = [];
       if (!team1) errors.push("Choisis l'équipe 1");
       if (!team2) errors.push("Choisis l'équipe 2");
       if (team1 && team2 && team1 === team2) errors.push("Les 2 équipes doivent être différentes");
-      if (team1Players.length === 0 && team2Players.length === 0) errors.push("Colle les stats d'au moins une équipe");
+      if (team1Players.length === 0 && team2Players.length === 0 && team1Goalies.length === 0 && team2Goalies.length === 0) errors.push("Colle les stats d'au moins une équipe");
 
       if (errors.length > 0) {
         resultDiv.innerHTML = `<div class="alert alert-danger">⚠ ${errors.join(' · ')}</div>`;
@@ -967,11 +1199,13 @@ window.addEventListener('firebase-ready', () => {
         id: uid(),
         cat, team1, team2,
         team1Players, team2Players,
+        team1Goalies, team2Goalies,
         ts: Date.now()
       });
       await saveWeek(currentWeek);
       const total = team1Players.length + team2Players.length;
-      resultDiv.innerHTML = `<div class="alert alert-success">✓ Partie enregistrée : ${escapeHtml(team1)} vs ${escapeHtml(team2)} en ${cat} (${total} joueurs). Synchronisée avec Firebase. ✨</div>`;
+      const totalG = team1Goalies.length + team2Goalies.length;
+      resultDiv.innerHTML = `<div class="alert alert-success">✓ Partie enregistrée : ${escapeHtml(team1)} vs ${escapeHtml(team2)} en ${cat} (${total} joueurs${totalG ? ', ' + totalG + ' gardien(s)' : ''}). Synchronisée avec Firebase. ✨</div>`;
       clearForm();
     });
 
@@ -981,6 +1215,7 @@ window.addEventListener('firebase-ready', () => {
     });
 
     document.getElementById('t-cat').addEventListener('change', renderTotals);
+    document.getElementById('goalie-cat').addEventListener('change', renderGoaliesTable);
   }
 
   // ===== BOOT =====
