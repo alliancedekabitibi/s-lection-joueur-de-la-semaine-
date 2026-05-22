@@ -425,7 +425,7 @@
   </div>
 
   <div id="tab-selection" class="tab-content" style="display:none;">
-    <p style="font-size: 13px; color: #78716c; margin: 0 0 16px;">Top 3 par division selon les totaux de la semaine. <span class="admin-only">Clique sur un joueur pour le couronner.</span></p>
+    <p style="font-size: 13px; color: #78716c; margin: 0 0 16px;">Top 3 par division classé selon la <strong>moyenne de points par match</strong>. <span class="admin-only">Clique sur un joueur pour le couronner.</span></p>
     <div id="selection-grid" class="top-grid"></div>
   </div>
 
@@ -771,23 +771,24 @@ window.addEventListener('firebase-ready', () => {
     return Object.values(map).map(x => ({
       ...x,
       teams: Array.from(x.teams).join(', '),
-      jerseys: Array.from(x.jerseys).join('/')
-    })).sort((a,b) => b.pts - a.pts || b.g - a.g || b.a - a.a);
+      jerseys: Array.from(x.jerseys).join('/'),
+      ptsPerGame: x.gp > 0 ? x.pts / x.gp : 0
+    })).sort((a,b) => b.ptsPerGame - a.ptsPerGame || b.pts - a.pts || b.g - a.g || b.a - a.a);
   }
 
   function renderTotals() {
     const cat = document.getElementById('t-cat').value;
     const wrap = document.getElementById('totals-table-wrap');
     const players = aggregateForCat(currentWeek, cat);
-    document.getElementById('t-count').textContent = `${players.length} joueurs en ${cat}`;
+    document.getElementById('t-count').textContent = `${players.length} joueurs en ${cat} · triés par PTS/match`;
     if (players.length === 0) {
       wrap.innerHTML = `<div class="empty-state">Aucune partie ${cat} enregistrée cette semaine.</div>`;
       return;
     }
-    let html = '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th><th style="text-align:right;">PTS</th><th style="text-align:right;">PUN</th></tr></thead><tbody>';
+    let html = '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th><th style="text-align:right;">PTS</th><th style="text-align:right;">PUN</th><th style="text-align:right; background:#dbeafe;">PTS/M</th></tr></thead><tbody>';
     players.forEach((p, idx) => {
       const cls = idx < 3 ? `class="top${idx+1}"` : '';
-      html += `<tr ${cls}><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(p.teams)}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td><td style="text-align:right; font-weight:500;">${p.pts}</td><td style="text-align:right;">${p.pim}</td></tr>`;
+      html += `<tr ${cls}><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(p.teams)}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td><td style="text-align:right;">${p.pts}</td><td style="text-align:right;">${p.pim}</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${p.ptsPerGame.toFixed(2)}</td></tr>`;
     });
     html += '</tbody></table></div>';
     wrap.innerHTML = html;
@@ -816,7 +817,7 @@ window.addEventListener('firebase-ready', () => {
           html += `<span class="medal medal-${i+1}">${i+1}</span>`;
           html += `<div style="flex:1; min-width:0;"><div class="name">${escapeHtml(p.name)}</div>`;
           if (p.teams) html += `<div class="team">${escapeHtml(p.teams)}</div>`;
-          html += `</div><div class="stats">${p.g}B · ${p.a}A<strong>${p.pts} pts</strong></div></div>`;
+          html += `</div><div class="stats">${p.g}B · ${p.a}A · ${p.pts}pts<strong>${p.ptsPerGame.toFixed(2)} pts/m</strong></div></div>`;
         });
         if (selected && isAdmin) html += `<button data-clear="${cat}" style="margin-top:10px; font-size:12px; width:100%;">Annuler la sélection</button>`;
       }
@@ -854,7 +855,7 @@ window.addEventListener('firebase-ready', () => {
         const p = key ? players.find(x => x.key === key) : null;
         html += `<div class="history-cell"><span class="cat-pill cat-${cat}">${cat}</span>`;
         if (p) {
-          html += `<div style="font-size:13px; font-weight:500; margin-top:6px;">${escapeHtml(p.name)}</div><div style="font-size:11px; color:#78716c;">${p.g}B · ${p.a}A · ${p.pts} pts</div>`;
+          html += `<div style="font-size:13px; font-weight:500; margin-top:6px;">${escapeHtml(p.name)}</div><div style="font-size:11px; color:#78716c;">${p.g}B · ${p.a}A · ${p.ptsPerGame.toFixed(2)} pts/m</div>`;
         } else {
           html += `<div style="font-size:13px; color:#a8a29e; margin-top:6px;">—</div>`;
         }
