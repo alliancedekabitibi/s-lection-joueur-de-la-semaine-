@@ -411,6 +411,10 @@
         <label>Date de fin</label>
         <input type="date" id="sn-date-end" style="width:100%;" />
       </div>
+      <div>
+        <label>Importer vers la semaine n°</label>
+        <input type="number" id="sn-target-week" min="1" value="1" style="width:100%;" />
+      </div>
       <div style="display:flex; align-items:flex-end;">
         <button id="sn-week-shortcut" style="width:100%;" title="Remplit les 7 derniers jours">📅 7 derniers jours</button>
       </div>
@@ -1356,7 +1360,8 @@ window.addEventListener('firebase-ready', () => {
           <div style="font-size:11px; color:#a8a29e; margin-top:2px;">${dateStr}</div>
         </div><label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;"><input type="checkbox" class="sn-game-check" data-idx="${i}" ${g.cat ? 'checked' : ''} /> Importer</label></div>`;
       });
-      html += `<div class="button-row"><button id="sn-import-selected" class="primary">⬇ Importer les parties cochées vers la semaine ${currentWeek}</button></div>`;
+      const targetWeek = parseInt(document.getElementById('sn-target-week').value, 10) || currentWeek;
+      html += `<div class="button-row"><button id="sn-import-selected" class="primary">⬇ Importer les parties cochées vers la semaine ${targetWeek}</button></div>`;
       listDiv.innerHTML = html;
       document.getElementById('sn-import-selected').addEventListener('click', snDoImportSelected);
     } catch(e) {
@@ -1372,9 +1377,10 @@ window.addEventListener('firebase-ready', () => {
     const resultDiv = document.getElementById('sn-import-result');
     const checks = Array.from(document.querySelectorAll('.sn-game-check:checked'));
     if (checks.length === 0) { resultDiv.innerHTML = '<div class="alert alert-danger">⚠ Coche au moins une partie.</div>'; return; }
+    const targetWeek = parseInt(document.getElementById('sn-target-week').value, 10) || currentWeek;
     const btn = document.getElementById('sn-import-selected');
     btn.disabled = true;
-    const wd = getWeek(currentWeek);
+    const wd = getWeek(targetWeek);
     if (!wd.games) wd.games = [];
     let imported = 0, skipped = 0;
     const problems = [];
@@ -1411,9 +1417,12 @@ window.addEventListener('firebase-ready', () => {
       }
     }
 
-    await saveWeek(currentWeek);
+    await saveWeek(targetWeek);
+    // Basculer sur la semaine importée pour voir le résultat
+    currentWeek = targetWeek;
+    renderWeekSelect();
     btn.disabled = false;
-    let msg = `<div class="alert alert-success">✓ ${imported} partie(s) importée(s) vers la semaine ${currentWeek} et synchronisée(s) avec Firebase. ✨</div>`;
+    let msg = `<div class="alert alert-success">✓ ${imported} partie(s) importée(s) vers la semaine ${targetWeek} et synchronisée(s) avec Firebase. ✨ Va voir dans « Sélections » ou « Totaux ».</div>`;
     if (problems.length) {
       msg += `<div class="alert alert-danger" style="margin-top:8px;">⚠ ${skipped} partie(s) ignorée(s) :<br>` + problems.map(escapeHtml).join('<br>') + '</div>';
     }
