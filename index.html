@@ -370,12 +370,58 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn admin-only active" data-tab="add" style="display:none;">➕ Ajouter une partie</button>
+    <button class="tab-btn admin-only active" data-tab="autoimport" style="display:none;">⚡ Import auto</button>
+    <button class="tab-btn admin-only" data-tab="add" style="display:none;">✏️ Ajout manuel</button>
     <button class="tab-btn" data-tab="games">📋 Parties</button>
     <button class="tab-btn" data-tab="totals">📊 Totaux</button>
     <button class="tab-btn" data-tab="selection">🏆 Sélections</button>
     <button class="tab-btn" data-tab="goalies">🥅 Gardiens</button>
     <button class="tab-btn" data-tab="history">🕒 Historique</button>
+  </div>
+
+  <div id="tab-autoimport" class="tab-content admin-only" style="display:none;">
+    <div style="background:#dbeafe; color:#1e40af; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:16px;">
+      ⚡ Import automatique depuis SportNinja. Colle ton token une fois, choisis les dates, et tout se charge tout seul.
+    </div>
+
+    <div style="background:#fafaf9; border:1px solid #e7e5e4; border-radius:8px; padding:16px; margin-bottom:16px;">
+      <label style="font-size:12px; color:#78716c; display:block; margin-bottom:4px;">🔑 Token SportNinja (Bearer)</label>
+      <input type="password" id="sn-token" placeholder="Colle ton token ici (commence par v2.local...)" style="width:100%; font-family:monospace; font-size:12px;" />
+      <div style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+        <button id="sn-token-help" style="font-size:12px;">❓ Comment trouver mon token?</button>
+        <span id="sn-token-status" style="font-size:12px; color:#a8a29e;"></span>
+      </div>
+      <div id="sn-token-help-box" style="display:none; margin-top:10px; font-size:12px; color:#57534e; background:#fff; border:1px solid #e7e5e4; border-radius:6px; padding:12px; line-height:1.6;">
+        <strong>Pour récupérer ton token :</strong><br>
+        1. Ouvre <strong>app.sportninja.com</strong> et connecte-toi<br>
+        2. Appuie sur <strong>F12</strong> → onglet <strong>Network</strong> → filtre <strong>Fetch/XHR</strong><br>
+        3. Va sur une page de stats. Clique un appel vers <strong>metal-api.sportninja.net</strong><br>
+        4. Onglet <strong>Headers</strong> → section <strong>Request Headers</strong> → ligne <strong>authorization</strong><br>
+        5. Copie tout après « Bearer » (le long code <strong>v2.local...</strong>) et colle-le ici<br>
+        <span style="color:#a8a29e;">⚠️ Le token expire après quelques heures. Si l'import échoue, récupère-en un nouveau.</span>
+      </div>
+    </div>
+
+    <div class="form-row" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+      <div>
+        <label>Date de début</label>
+        <input type="date" id="sn-date-start" style="width:100%;" />
+      </div>
+      <div>
+        <label>Date de fin</label>
+        <input type="date" id="sn-date-end" style="width:100%;" />
+      </div>
+      <div style="display:flex; align-items:flex-end;">
+        <button id="sn-week-shortcut" style="width:100%;" title="Remplit les 7 derniers jours">📅 7 derniers jours</button>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button id="sn-fetch-games" class="primary">🔍 Trouver les parties</button>
+    </div>
+
+    <div id="sn-games-list" style="margin-top:16px;"></div>
+    <div id="sn-import-result" style="margin-top:12px;"></div>
   </div>
 
   <div id="tab-add" class="tab-content admin-only" style="display:none;">
@@ -514,6 +560,31 @@ window.addEventListener('firebase-ready', () => {
   const TEAMS_BY_CAT = Object.fromEntries(DIVISIONS.map(d => [d.code, d.teams]));
   const DIV_NAME = Object.fromEntries(DIVISIONS.map(d => [d.code, d.name]));
 
+  // ===== CONFIG API SPORTNINJA =====
+  const SN_API = 'https://metal-api.sportninja.net/v1';
+  const SN_SCHEDULE_UID = 'wOtp31BykDbMLUUp'; // ID de ta saison (Saison Location Amos 2026)
+  let snToken = ''; // token collé par l'admin, gardé en mémoire seulement
+
+  // Associe une équipe SportNinja à une de nos divisions, par son nom.
+  // Construit une fois depuis nos listes d'équipes.
+  function findDivisionForTeam(teamName) {
+    if (!teamName) return null;
+    const norm = s => String(s||'').trim().toLowerCase();
+    const target = norm(teamName);
+    for (const d of DIVISIONS) {
+      for (const t of d.teams) {
+        if (norm(t) === target) return d.code;
+      }
+    }
+    // Tolérance: correspondance partielle si pas de match exact
+    for (const d of DIVISIONS) {
+      for (const t of d.teams) {
+        if (norm(t) && (target.includes(norm(t)) || norm(t).includes(target))) return d.code;
+      }
+    }
+    return null;
+  }
+
   // ===== STATE =====
   let weeksData = {}; // { weekNum: { games: [], selections: {} } }
   let currentWeek = 2;
@@ -539,8 +610,8 @@ window.addEventListener('firebase-ready', () => {
       el.style.display = isAdmin ? '' : 'none';
     });
     document.getElementById('read-only-banner').style.display = isAdmin ? 'none' : '';
-    // Si pas admin, basculer hors de l'onglet "Ajouter" si actif
-    if (!isAdmin && activeTab === 'add') {
+    // Si pas admin, basculer hors des onglets réservés si actifs
+    if (!isAdmin && (activeTab === 'add' || activeTab === 'autoimport')) {
       activeTab = 'games';
       switchTab('games');
     }
@@ -1105,6 +1176,250 @@ window.addEventListener('firebase-ready', () => {
     }
   }
 
+  // ============================================================
+  // ===== IMPORT AUTOMATIQUE DEPUIS SPORTNINJA =====
+  // ============================================================
+  let snFoundGames = []; // parties trouvées lors du dernier "Trouver les parties"
+
+  async function snApiGet(path) {
+    const res = await fetch(SN_API + path, {
+      method: 'GET',
+      headers: {
+        'accept': 'application/json',
+        'authorization': 'Bearer ' + snToken
+      }
+    });
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('TOKEN_INVALIDE');
+    }
+    if (!res.ok) {
+      throw new Error('Erreur API (' + res.status + ')');
+    }
+    return res.json();
+  }
+
+  // Extrait une valeur en testant plusieurs noms de champs possibles
+  function pick(obj, keys, fallback) {
+    for (const k of keys) {
+      if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
+    }
+    return fallback;
+  }
+
+  // Convertit le tableau "stats" de SportNinja en objet joueur pour notre app
+  function snStatsToPlayer(entry) {
+    const p = entry.player || {};
+    const first = pick(p, ['name_first','first_name','firstName'], '');
+    const last = pick(p, ['name_last','last_name','lastName'], '');
+    let name = (first + ' ' + last).trim();
+    if (!name) name = pick(p, ['name','full_name','display_name'], '').trim();
+    const jersey = String(pick(p, ['jersey','number','player_number','jersey_number'], '') || '');
+
+    // stats est un tableau d'objets {name, abbr, value}
+    const statArr = entry.stats || [];
+    const byAbbr = {};
+    statArr.forEach(s => {
+      const ab = String(s.abbr || s.abbreviation || '').toUpperCase();
+      const nm = String(s.name || '').toLowerCase();
+      const val = parseFloat(s.value);
+      const v = isNaN(val) ? 0 : val;
+      if (ab) byAbbr[ab] = v;
+      // fallback par nom complet
+      if (nm.includes('goal')) byAbbr._g = v;
+      else if (nm.includes('assist')) byAbbr._a = v;
+      else if (nm === 'points' || nm.includes('point') && !nm.includes('average')) byAbbr._pts = v;
+      else if (nm.includes('games played')) byAbbr._gp = v;
+      else if (nm.includes('penalty') || nm.includes('pim')) byAbbr._pim = v;
+    });
+    const g = pick(byAbbr, ['G'], byAbbr._g || 0);
+    const a = pick(byAbbr, ['A'], byAbbr._a || 0);
+    const pts = pick(byAbbr, ['P','PTS'], byAbbr._pts || (g + a));
+    const gp = pick(byAbbr, ['GP'], byAbbr._gp || 1);
+    const pim = pick(byAbbr, ['PIM','PUN'], byAbbr._pim || 0);
+    return { jersey, name, gp: gp||0, g: g||0, a: a||0, pts: pts||0, pim: pim||0, ppg: 0 };
+  }
+
+  function snStatsToGoalie(entry) {
+    const p = entry.player || {};
+    const first = pick(p, ['name_first','first_name','firstName'], '');
+    const last = pick(p, ['name_last','last_name','lastName'], '');
+    let name = (first + ' ' + last).trim();
+    if (!name) name = pick(p, ['name','full_name','display_name'], '').trim();
+    const jersey = String(pick(p, ['jersey','number','player_number','jersey_number'], '') || '');
+
+    const statArr = entry.stats || [];
+    const byAbbr = {};
+    statArr.forEach(s => {
+      const ab = String(s.abbr || s.abbreviation || '').toUpperCase();
+      const val = parseFloat(s.value);
+      byAbbr[ab] = isNaN(val) ? 0 : val;
+    });
+    return {
+      jersey, name,
+      gp: pick(byAbbr,['GP'],0), w: pick(byAbbr,['W'],0), l: pick(byAbbr,['L'],0),
+      t: pick(byAbbr,['T'],0), otl: pick(byAbbr,['OTL'],0),
+      svp: pick(byAbbr,['SV%','SVP'],0), so: pick(byAbbr,['SO'],0),
+      min: pick(byAbbr,['MIN'],0), pim: pick(byAbbr,['PIM'],0),
+      sa: pick(byAbbr,['SA'],0), sv: pick(byAbbr,['SV'],0), ga: pick(byAbbr,['GA'],0)
+    };
+  }
+
+  // Récupère la liste des parties pour une plage de dates
+  async function snFetchGames(dateStart, dateEnd) {
+    const after = dateStart + 'T00:00:00';
+    const before = dateEnd + 'T23:59:59';
+    const path = `/schedules/${SN_SCHEDULE_UID}/games?page=1&order=desc&exclude_cancelled_games=1&starts_after=${encodeURIComponent(after)}&starts_before=${encodeURIComponent(before)}`;
+    const json = await snApiGet(path);
+    const games = json.data || [];
+    return games.map(g => {
+      // Trouver les 2 équipes — on teste plusieurs structures possibles
+      let homeTeam = g.homeTeam || g.home_team || g.home || null;
+      let visitTeam = g.visitingTeam || g.visiting_team || g.awayTeam || g.away_team || g.visitor || null;
+      // Parfois les équipes sont dans un tableau "teams"
+      if ((!homeTeam || !visitTeam) && Array.isArray(g.teams) && g.teams.length >= 2) {
+        homeTeam = homeTeam || g.teams[0];
+        visitTeam = visitTeam || g.teams[1];
+      }
+      const teamInfo = (t) => {
+        if (!t) return { id: null, name: '' };
+        return {
+          id: pick(t, ['id','uid','team_id'], null),
+          name: pick(t, ['name_full','full_name','name','team_name'], '')
+        };
+      };
+      const home = teamInfo(homeTeam);
+      const visit = teamInfo(visitTeam);
+      return {
+        id: pick(g, ['id','uid','game_id'], null),
+        date: pick(g, ['starts_at','started_at','date','starts'], ''),
+        home, visit,
+        // division déduite du nom d'une des équipes
+        cat: findDivisionForTeam(home.name) || findDivisionForTeam(visit.name) || null,
+        raw: g
+      };
+    });
+  }
+
+  // Récupère les stats (joueurs + gardiens) d'une équipe dans une partie
+  async function snFetchTeamStats(gameId, teamId) {
+    const players = [];
+    const goalies = [];
+    try {
+      const pj = await snApiGet(`/games/${gameId}/stats/players/team/${teamId}?goalie=0`);
+      (pj.data || []).forEach(e => {
+        const pl = snStatsToPlayer(e);
+        if (pl.name) players.push(pl);
+      });
+    } catch(e) { /* pas de joueurs */ }
+    try {
+      const gj = await snApiGet(`/games/${gameId}/stats/players/team/${teamId}?goalie=1`);
+      (gj.data || []).forEach(e => {
+        const go = snStatsToGoalie(e);
+        if (go.name) goalies.push(go);
+      });
+    } catch(e) { /* pas de gardiens */ }
+    return { players, goalies };
+  }
+
+  function snRenderTokenStatus() {
+    const el = document.getElementById('sn-token-status');
+    if (snToken) {
+      el.textContent = '✓ Token en mémoire';
+      el.style.color = '#166534';
+    } else {
+      el.textContent = 'Aucun token';
+      el.style.color = '#a8a29e';
+    }
+  }
+
+  async function snDoFindGames() {
+    const resultDiv = document.getElementById('sn-import-result');
+    const listDiv = document.getElementById('sn-games-list');
+    const ds = document.getElementById('sn-date-start').value;
+    const de = document.getElementById('sn-date-end').value;
+    resultDiv.innerHTML = '';
+    if (!snToken) { resultDiv.innerHTML = '<div class="alert alert-danger">⚠ Colle d\'abord ton token SportNinja.</div>'; return; }
+    if (!ds || !de) { resultDiv.innerHTML = '<div class="alert alert-danger">⚠ Choisis les dates de début et de fin.</div>'; return; }
+    listDiv.innerHTML = '<div class="alert alert-info">🔍 Recherche des parties en cours…</div>';
+    try {
+      snFoundGames = await snFetchGames(ds, de);
+      if (snFoundGames.length === 0) {
+        listDiv.innerHTML = '<div class="empty-state">Aucune partie trouvée pour cette plage de dates.</div>';
+        return;
+      }
+      let html = `<div style="margin-bottom:10px; font-size:13px; color:#57534e;">${snFoundGames.length} partie(s) trouvée(s) :</div>`;
+      snFoundGames.forEach((g, i) => {
+        const dateStr = g.date ? new Date(g.date).toLocaleDateString('fr-CA', {weekday:'short', day:'numeric', month:'short'}) : '';
+        const catPill = g.cat ? `<span class="cat-pill cat-${g.cat}">${g.cat}</span>` : '<span class="cat-pill" style="background:#fee2e2; color:#991b1b;">? division</span>';
+        html += `<div class="game-card"><div style="flex:1; min-width:0;">
+          <div style="font-size:14px; font-weight:500;">${catPill} ${escapeHtml(g.home.name || '?')} <span style="color:#78716c;">vs</span> ${escapeHtml(g.visit.name || '?')}</div>
+          <div style="font-size:11px; color:#a8a29e; margin-top:2px;">${dateStr}</div>
+        </div><label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;"><input type="checkbox" class="sn-game-check" data-idx="${i}" ${g.cat ? 'checked' : ''} /> Importer</label></div>`;
+      });
+      html += `<div class="button-row"><button id="sn-import-selected" class="primary">⬇ Importer les parties cochées vers la semaine ${currentWeek}</button></div>`;
+      listDiv.innerHTML = html;
+      document.getElementById('sn-import-selected').addEventListener('click', snDoImportSelected);
+    } catch(e) {
+      if (e.message === 'TOKEN_INVALIDE') {
+        listDiv.innerHTML = '<div class="alert alert-danger">🔑 Token invalide ou expiré. Récupère un nouveau token dans SportNinja (voir « Comment trouver mon token? »).</div>';
+      } else {
+        listDiv.innerHTML = `<div class="alert alert-danger">⚠ ${escapeHtml(e.message)}</div>`;
+      }
+    }
+  }
+
+  async function snDoImportSelected() {
+    const resultDiv = document.getElementById('sn-import-result');
+    const checks = Array.from(document.querySelectorAll('.sn-game-check:checked'));
+    if (checks.length === 0) { resultDiv.innerHTML = '<div class="alert alert-danger">⚠ Coche au moins une partie.</div>'; return; }
+    const btn = document.getElementById('sn-import-selected');
+    btn.disabled = true;
+    const wd = getWeek(currentWeek);
+    if (!wd.games) wd.games = [];
+    let imported = 0, skipped = 0;
+    const problems = [];
+
+    for (let ci = 0; ci < checks.length; ci++) {
+      const idx = parseInt(checks[ci].dataset.idx, 10);
+      const g = snFoundGames[idx];
+      resultDiv.innerHTML = `<div class="alert alert-info">⏳ Import ${ci+1}/${checks.length} : ${escapeHtml(g.home.name)} vs ${escapeHtml(g.visit.name)}…</div>`;
+      if (!g.cat) { problems.push(`${g.home.name} vs ${g.visit.name} : division inconnue`); skipped++; continue; }
+      if (!g.id || !g.home.id || !g.visit.id) { problems.push(`${g.home.name} vs ${g.visit.name} : IDs manquants`); skipped++; continue; }
+      try {
+        const homeStats = await snFetchTeamStats(g.id, g.home.id);
+        const visitStats = await snFetchTeamStats(g.id, g.visit.id);
+        // éviter les doublons: enlever une partie déjà importée avec le même snGameId
+        wd.games = wd.games.filter(x => x.snGameId !== g.id);
+        wd.games.push({
+          id: uid(),
+          snGameId: g.id,
+          cat: g.cat,
+          team1: g.home.name, team2: g.visit.name,
+          team1Players: homeStats.players, team2Players: visitStats.players,
+          team1Goalies: homeStats.goalies, team2Goalies: visitStats.goalies,
+          ts: Date.now()
+        });
+        imported++;
+      } catch(e) {
+        if (e.message === 'TOKEN_INVALIDE') {
+          resultDiv.innerHTML = '<div class="alert alert-danger">🔑 Token expiré pendant l\'import. Récupère un nouveau token et recommence.</div>';
+          btn.disabled = false;
+          return;
+        }
+        problems.push(`${g.home.name} vs ${g.visit.name} : ${e.message}`);
+        skipped++;
+      }
+    }
+
+    await saveWeek(currentWeek);
+    btn.disabled = false;
+    let msg = `<div class="alert alert-success">✓ ${imported} partie(s) importée(s) vers la semaine ${currentWeek} et synchronisée(s) avec Firebase. ✨</div>`;
+    if (problems.length) {
+      msg += `<div class="alert alert-danger" style="margin-top:8px;">⚠ ${skipped} partie(s) ignorée(s) :<br>` + problems.map(escapeHtml).join('<br>') + '</div>';
+    }
+    resultDiv.innerHTML = msg;
+  }
+
   function renderWeekSelect() {
     const sel = document.getElementById('week-select');
     const weeks = Object.keys(weeksData).map(Number).sort((a,b) => a-b);
@@ -1170,6 +1485,25 @@ window.addEventListener('firebase-ready', () => {
     document.getElementById('team2-paste').addEventListener('input', () => updateDetectBadge(2));
     document.getElementById('team1-goalies').addEventListener('input', () => updateGoalieBadge(1));
     document.getElementById('team2-goalies').addEventListener('input', () => updateGoalieBadge(2));
+
+    // ===== Import auto =====
+    document.getElementById('sn-token').addEventListener('input', (e) => {
+      snToken = e.target.value.trim().replace(/^Bearer\s+/i, '');
+      snRenderTokenStatus();
+    });
+    document.getElementById('sn-token-help').addEventListener('click', () => {
+      const box = document.getElementById('sn-token-help-box');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    });
+    document.getElementById('sn-week-shortcut').addEventListener('click', () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 7);
+      const fmt = d => d.toISOString().slice(0,10);
+      document.getElementById('sn-date-start').value = fmt(start);
+      document.getElementById('sn-date-end').value = fmt(end);
+    });
+    document.getElementById('sn-fetch-games').addEventListener('click', snDoFindGames);
 
     document.getElementById('save-game-btn').addEventListener('click', async () => {
       if (!isAdmin) return;
