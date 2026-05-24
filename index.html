@@ -510,9 +510,21 @@
     <div style="background:#dbeafe; color:#1e40af; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:16px;">
       ⭐ Cote calculée sur <strong>toute la saison</strong>. Buts/aides valent 2/1 pts en H2-F2, et 1/0,5 pts en H3-F3. La cote = moyenne de ces points par partie.
     </div>
+
+    <div class="admin-only" style="background:#fafaf9; border:1px solid #e7e5e4; border-radius:8px; padding:14px; margin-bottom:16px;">
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <button id="rating-fetch-standings">📊 Importer le classement depuis SportNinja</button>
+        <span id="rating-standings-status" style="font-size:12px; color:#a8a29e;">Aucun classement chargé</span>
+      </div>
+      <div style="font-size:12px; color:#78716c; margin-top:8px;">Le classement sert à pondérer les points selon la force de l'adversaire. Utilise le token de l'onglet « Import auto ».</div>
+    </div>
+
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
       <label style="font-size: 13px; color: #78716c;">Division</label>
       <select id="rating-cat"></select>
+      <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#57534e; cursor:pointer;">
+        <input type="checkbox" id="rating-weighted" /> Pondérer selon l'adversaire
+      </label>
       <span style="flex:1;"></span>
       <span id="rating-count" style="font-size: 12px; color: #a8a29e;"></span>
     </div>
@@ -589,6 +601,37 @@ window.addEventListener('firebase-ready', () => {
   const SN_API = 'https://metal-api.sportninja.net/v1';
   const SN_SCHEDULE_UID = 'wOtp31BykDbMLUUp'; // ID de ta saison (Saison Location Amos 2026)
   let snToken = ''; // token collé par l'admin, gardé en mémoire seulement
+
+  // Classement importé: standingsData[cat] = { 'Nom équipe': points, ... } + _avg
+  let standingsData = {};
+  // Bornes de pondération (Option A bornée, validée)
+  const WEIGHT_MIN = 0.7;
+  const WEIGHT_MAX = 1.3;
+
+  // Multiplicateur d'un adversaire selon ses points vs la moyenne de la division
+  function weightForOpponent(cat, opponentName) {
+    const st = standingsData[cat];
+    if (!st || !st._avg || st._avg <= 0) return 1; // pas de classement → pas de pondération
+    const norm = s => String(s||'').trim().toLowerCase();
+    let oppPts = null;
+    for (const tname in st) {
+      if (tname === '_avg') continue;
+      if (norm(tname) === norm(opponentName)) { oppPts = st[tname]; break; }
+    }
+    if (oppPts === null) {
+      // correspondance partielle
+      for (const tname in st) {
+        if (tname === '_avg') continue;
+        if (norm(tname).includes(norm(opponentName)) || norm(opponentName).includes(norm(tname))) { oppPts = st[tname]; break; }
+      }
+    }
+    if (oppPts === null) return 1;
+    let mult = oppPts / st._avg;
+    if (mult < WEIGHT_MIN) mult = WEIGHT_MIN;
+    if (mult > WEIGHT_MAX) mult = WEIGHT_MAX;
+    return mult;
+  }
+
 
   // Associe une équipe SportNinja à une de nos divisions, par son nom.
   // Construit une fois depuis nos listes d'équipes.
@@ -1039,46 +1082,65 @@ window.addEventListener('firebase-ready', () => {
     }
   }
 
-  // Cumule TOUTES les semaines pour une division donnée, calcule la cote de chaque joueur
+  // Cumule TOUTES les semaines pour une division. Calcule cote brute ET cote pondérée.
   function ratingForCat(cat) {
     const map = {};
+    function ensure(p) {
+      const k = playerKey(p);
+      if (!map[k]) map[k] = { key: k, name: p.name, teams: new Set(), jerseys: new Set(),
+        gp:0, g:0, a:0, cotePtsRaw:0, cotePtsWeighted:0, multSum:0, multCount:0 };
+      return map[k];
+    }
     Object.keys(weeksData).forEach(w => {
       const wd = weeksData[w];
       const games = (wd.games || []).filter(g => g.cat === cat);
-      function addPlayers(players, teamName) {
-        (players || []).forEach(p => {
-          const k = playerKey(p);
-          if (!map[k]) map[k] = { key: k, name: p.name, teams: new Set(), jerseys: new Set(), gp:0, g:0, a:0 };
-          if (teamName) map[k].teams.add(teamName);
-          if (p.jersey) map[k].jerseys.add(p.jersey);
-          map[k].gp += (p.gp || 0);
-          map[k].g += (p.g || 0);
-          map[k].a += (p.a || 0);
-        });
-      }
       games.forEach(game => {
-        addPlayers(game.team1Players, game.team1);
-        addPlayers(game.team2Players, game.team2);
+        // Pour chaque équipe, l'adversaire est l'autre équipe
+        const processTeam = (players, ownTeam, oppTeam) => {
+          const mult = weightForOpponent(cat, oppTeam);
+          (players || []).forEach(p => {
+            const m = ensure(p);
+            if (ownTeam) m.teams.add(ownTeam);
+            if (p.jersey) m.jerseys.add(p.jersey);
+            m.gp += (p.gp || 0);
+            m.g += (p.g || 0);
+            m.a += (p.a || 0);
+            const ptsThisGame = ratePointsFor(cat, p.g || 0, p.a || 0);
+            m.cotePtsRaw += ptsThisGame;
+            m.cotePtsWeighted += ptsThisGame * mult;
+            m.multSum += mult;
+            m.multCount += 1;
+          });
+        };
+        processTeam(game.team1Players, game.team1, game.team2);
+        processTeam(game.team2Players, game.team2, game.team1);
       });
     });
     return Object.values(map).map(x => {
-      const cotePts = ratePointsFor(cat, x.g, x.a);
-      const avg = x.gp > 0 ? cotePts / x.gp : 0;
+      const avgRaw = x.gp > 0 ? x.cotePtsRaw / x.gp : 0;
+      const avgWeighted = x.gp > 0 ? x.cotePtsWeighted / x.gp : 0;
+      const avgMult = x.multCount > 0 ? x.multSum / x.multCount : 1;
       return {
         ...x,
         teams: Array.from(x.teams).join(', '),
         jerseys: Array.from(x.jerseys).join('/'),
-        cotePts,
-        avg,
-        label: rateLabel(cat, avg)
+        avgRaw, avgWeighted, avgMult,
+        labelRaw: rateLabel(cat, avgRaw),
+        labelWeighted: rateLabel(cat, avgWeighted)
       };
-    }).sort((a,b) => b.avg - a.avg || b.cotePts - a.cotePts);
+    });
   }
 
   function renderRating() {
     const cat = document.getElementById('rating-cat').value;
+    const weighted = document.getElementById('rating-weighted').checked;
     const wrap = document.getElementById('rating-table-wrap');
-    const players = ratingForCat(cat);
+    let players = ratingForCat(cat);
+    // tri selon le mode choisi
+    players.sort((a,b) => weighted
+      ? (b.avgWeighted - a.avgWeighted || b.cotePtsWeighted - a.cotePtsWeighted)
+      : (b.avgRaw - a.avgRaw || b.cotePtsRaw - a.cotePtsRaw));
+    const hasStandings = standingsData[cat] && standingsData[cat]._avg > 0;
     document.getElementById('rating-count').textContent = `${players.length} joueurs en ${cat} · saison complète`;
     if (players.length === 0) {
       wrap.innerHTML = `<div class="empty-state">Aucune donnée pour ${cat}. Importe des parties d'abord.</div>`;
@@ -1086,10 +1148,29 @@ window.addEventListener('firebase-ready', () => {
     }
     const butPt = (cat === 'H2' || cat === 'F2') ? '2' : '1';
     const aidePt = (cat === 'H2' || cat === 'F2') ? '1' : '0,5';
-    let html = `<div style="font-size:12px; color:#a8a29e; margin-bottom:8px;">Formule ${cat} : but = ${butPt} pt, aide = ${aidePt} pt</div>`;
-    html += '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th><th style="text-align:right; background:#eff6ff;">Pts cote</th><th style="text-align:right; background:#eff6ff;">Moy./match</th><th style="text-align:center;">Cote</th></tr></thead><tbody>';
+    let note = `Formule ${cat} : but = ${butPt} pt, aide = ${aidePt} pt`;
+    if (weighted && !hasStandings) {
+      note += ` · ⚠️ Aucun classement chargé — importe-le pour activer la pondération (sans lui, ×1 partout)`;
+    } else if (weighted) {
+      note += ` · Pondéré entre ×${WEIGHT_MIN} et ×${WEIGHT_MAX} selon l'adversaire`;
+    }
+    let html = `<div style="font-size:12px; color:#a8a29e; margin-bottom:8px;">${note}</div>`;
+    html += '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th>';
+    if (weighted) {
+      html += '<th style="text-align:right;">Moy. brute</th><th style="text-align:right;">Mult. moy.</th><th style="text-align:right; background:#eff6ff;">Moy. pondérée</th>';
+    } else {
+      html += '<th style="text-align:right; background:#eff6ff;">Moy./match</th>';
+    }
+    html += '<th style="text-align:center;">Cote</th></tr></thead><tbody>';
     players.forEach((p, idx) => {
-      html += `<tr><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(p.teams)}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td><td style="text-align:right; font-weight:500; background:#eff6ff;">${p.cotePts % 1 === 0 ? p.cotePts : p.cotePts.toFixed(1)}</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avg.toFixed(2)}</td><td style="text-align:center;"><span class="rating-badge rating-${p.label}">${p.label}</span></td></tr>`;
+      const label = weighted ? p.labelWeighted : p.labelRaw;
+      html += `<tr><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(p.teams)}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td>`;
+      if (weighted) {
+        html += `<td style="text-align:right; color:#a8a29e;">${p.avgRaw.toFixed(2)}</td><td style="text-align:right; color:#a8a29e;">×${p.avgMult.toFixed(2)}</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avgWeighted.toFixed(2)}</td>`;
+      } else {
+        html += `<td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avgRaw.toFixed(2)}</td>`;
+      }
+      html += `<td style="text-align:center;"><span class="rating-badge rating-${label}">${label}</span></td></tr>`;
     });
     html += '</tbody></table></div>';
     wrap.innerHTML = html;
@@ -1424,6 +1505,81 @@ window.addEventListener('firebase-ready', () => {
     return { players, goalies };
   }
 
+  // Importe le classement et construit standingsData (points par équipe + moyenne par division)
+  async function snFetchStandings() {
+    const json = await snApiGet(`/schedules/${SN_SCHEDULE_UID}/standings?groupBy=Division&sortBy=232&sort=desc`);
+    // La réponse peut être groupée par division de plusieurs façons; on explore en profondeur
+    const result = {}; // cat -> { teamName: points }
+    // Fonction qui extrait points d'une entrée d'équipe (teste plusieurs structures)
+    function extractTeam(entry) {
+      // nom
+      const t = entry.team || entry;
+      const name = pick(t, ['name_full','full_name','name','team_name'], '') ||
+                   pick(entry, ['name_full','full_name','name','team_name'], '');
+      // points: soit champ direct, soit dans un tableau "stats" {abbr:'PTS'}
+      let pts = pick(entry, ['points','pts','PTS'], null);
+      if (pts === null && Array.isArray(entry.stats)) {
+        const s = entry.stats.find(x => String(x.abbr||x.abbreviation||'').toUpperCase() === 'PTS'
+                              || String(x.name||'').toLowerCase() === 'points');
+        if (s) pts = parseFloat(s.value);
+      }
+      if (pts === null) pts = pick(t, ['points','pts'], null);
+      return { name, pts: (pts === null || isNaN(pts)) ? null : Number(pts) };
+    }
+
+    // La structure: data est soit un tableau de divisions, soit un tableau d'équipes
+    const data = json.data || json;
+    const divisions = Array.isArray(data) ? data : (data.divisions || data.groups || [data]);
+
+    divisions.forEach(div => {
+      // nom de la division pour matcher nos codes
+      const divName = pick(div, ['name','division','title','label'], '');
+      // équipes dans cette division
+      let teams = div.teams || div.standings || div.rows || div.data || (Array.isArray(div) ? div : null);
+      if (!teams && Array.isArray(data) && !div.teams) {
+        // peut-être que "data" est directement la liste des équipes (pas groupé)
+        teams = null;
+      }
+      if (Array.isArray(teams)) {
+        // déterminer à quel code de division ça correspond
+        let cat = null;
+        for (const d of DIVISIONS) {
+          if (String(divName).includes(d.name) || String(divName).includes(d.code)) { cat = d.code; break; }
+        }
+        teams.forEach(teamEntry => {
+          const { name, pts } = extractTeam(teamEntry);
+          if (!name || pts === null) return;
+          // si on n'a pas trouvé la division par son nom, la déduire de l'équipe
+          const teamCat = cat || findDivisionForTeam(name);
+          if (!teamCat) return;
+          if (!result[teamCat]) result[teamCat] = {};
+          result[teamCat][name] = pts;
+        });
+      }
+    });
+
+    // Si rien n'a été groupé (data = liste plate d'équipes), traiter à plat
+    if (Object.keys(result).length === 0 && Array.isArray(data)) {
+      data.forEach(teamEntry => {
+        const { name, pts } = extractTeam(teamEntry);
+        if (!name || pts === null) return;
+        const teamCat = findDivisionForTeam(name);
+        if (!teamCat) return;
+        if (!result[teamCat]) result[teamCat] = {};
+        result[teamCat][name] = pts;
+      });
+    }
+
+    // Calculer la moyenne de points par division
+    Object.keys(result).forEach(cat => {
+      const vals = Object.keys(result[cat]).filter(k => k !== '_avg').map(k => result[cat][k]);
+      const avg = vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
+      result[cat]._avg = avg;
+    });
+
+    return result;
+  }
+
   function snRenderTokenStatus() {
     const el = document.getElementById('sn-token-status');
     if (snToken) {
@@ -1660,6 +1816,34 @@ window.addEventListener('firebase-ready', () => {
     document.getElementById('t-cat').addEventListener('change', renderTotals);
     document.getElementById('goalie-cat').addEventListener('change', renderGoaliesTable);
     document.getElementById('rating-cat').addEventListener('change', renderRating);
+    document.getElementById('rating-weighted').addEventListener('change', renderRating);
+    document.getElementById('rating-fetch-standings').addEventListener('click', async () => {
+      const status = document.getElementById('rating-standings-status');
+      if (!snToken) { status.textContent = '⚠ Colle d\'abord ton token dans l\'onglet « Import auto »'; status.style.color = '#991b1b'; return; }
+      status.textContent = '⏳ Import du classement…'; status.style.color = '#1e40af';
+      try {
+        standingsData = await snFetchStandings();
+        const divs = Object.keys(standingsData);
+        if (divs.length === 0) {
+          status.textContent = '⚠ Classement reçu mais aucune équipe reconnue. Envoie-moi la console (F12).';
+          status.style.color = '#991b1b';
+          console.log('STANDINGS DEBUG: structure non reconnue');
+        } else {
+          const summary = divs.map(c => `${c} (${Object.keys(standingsData[c]).filter(k=>k!=='_avg').length} éq.)`).join(', ');
+          status.textContent = `✓ Classement chargé : ${summary}`;
+          status.style.color = '#166534';
+          document.getElementById('rating-weighted').checked = true;
+        }
+        renderRating();
+      } catch(e) {
+        if (e.message === 'TOKEN_INVALIDE') {
+          status.textContent = '🔑 Token expiré. Récupère un nouveau token.';
+        } else {
+          status.textContent = '⚠ ' + e.message;
+        }
+        status.style.color = '#991b1b';
+      }
+    });
   }
 
   // ===== BOOT =====
