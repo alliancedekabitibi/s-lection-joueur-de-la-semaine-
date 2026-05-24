@@ -520,8 +520,11 @@
     </div>
 
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
-      <label style="font-size: 13px; color: #78716c;">Division</label>
-      <select id="rating-cat"></select>
+      <label style="font-size: 13px; color: #78716c;">Catégorie</label>
+      <select id="rating-gender">
+        <option value="H">Hommes (H2 + H3 cumulés)</option>
+        <option value="F">Femmes (F2 + F3 cumulés)</option>
+      </select>
       <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#57534e; cursor:pointer;">
         <input type="checkbox" id="rating-weighted" /> Pondérer selon l'adversaire
       </label>
@@ -795,7 +798,7 @@ window.addEventListener('firebase-ready', () => {
   // ===== SELECTORS =====
   function populateCatSelects() {
     const opts = DIVISIONS.map(d => `<option value="${d.code}">${d.code} — ${escapeHtml(d.name)}</option>`).join('');
-    ['g-cat', 't-cat', 'goalie-cat', 'rating-cat'].forEach(id => {
+    ['g-cat', 't-cat', 'goalie-cat'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = opts;
     });
@@ -1082,44 +1085,48 @@ window.addEventListener('firebase-ready', () => {
     }
   }
 
-  // Cumule TOUTES les semaines pour une division. Calcule cote brute ET cote pondérée.
-  function ratingForCat(cat) {
+  // Cumule TOUTES les semaines pour les 2 divisions d'un sexe ('H' → H2+H3, 'F' → F2+F3).
+  // Chaque partie garde la formule de SA division. Pondération par le classement de SA division.
+  function ratingForGender(gender) {
+    const cats = gender === 'F' ? ['F2','F3'] : ['H2','H3'];
     const map = {};
     function ensure(p) {
       const k = playerKey(p);
-      if (!map[k]) map[k] = { key: k, name: p.name, teams: new Set(), jerseys: new Set(),
+      if (!map[k]) map[k] = { key: k, name: p.name, teams: new Set(), jerseys: new Set(), divisions: new Set(),
         gp:0, g:0, a:0, cotePtsRaw:0, cotePtsWeighted:0, multSum:0, multCount:0, details:[] };
       return map[k];
     }
     Object.keys(weeksData).map(Number).sort((a,b)=>a-b).forEach(w => {
       const wd = weeksData[w];
-      const games = (wd.games || []).filter(g => g.cat === cat);
-      games.forEach(game => {
-        // Pour chaque équipe, l'adversaire est l'autre équipe
-        const processTeam = (players, ownTeam, oppTeam) => {
-          const mult = weightForOpponent(cat, oppTeam);
-          const oppPts = getOpponentPoints(cat, oppTeam);
-          (players || []).forEach(p => {
-            const m = ensure(p);
-            if (ownTeam) m.teams.add(ownTeam);
-            if (p.jersey) m.jerseys.add(p.jersey);
-            m.gp += (p.gp || 0);
-            m.g += (p.g || 0);
-            m.a += (p.a || 0);
-            const ptsThisGame = ratePointsFor(cat, p.g || 0, p.a || 0);
-            m.cotePtsRaw += ptsThisGame;
-            m.cotePtsWeighted += ptsThisGame * mult;
-            m.multSum += mult;
-            m.multCount += 1;
-            m.details.push({
-              week: w, opp: oppTeam, oppPts,
-              g: p.g||0, a: p.a||0,
-              ptsRaw: ptsThisGame, mult, ptsWeighted: ptsThisGame * mult
+      cats.forEach(cat => {
+        const games = (wd.games || []).filter(g => g.cat === cat);
+        games.forEach(game => {
+          const processTeam = (players, ownTeam, oppTeam) => {
+            const mult = weightForOpponent(cat, oppTeam);
+            const oppPts = getOpponentPoints(cat, oppTeam);
+            (players || []).forEach(p => {
+              const m = ensure(p);
+              if (ownTeam) m.teams.add(ownTeam);
+              if (p.jersey) m.jerseys.add(p.jersey);
+              m.divisions.add(cat);
+              m.gp += (p.gp || 0);
+              m.g += (p.g || 0);
+              m.a += (p.a || 0);
+              const ptsThisGame = ratePointsFor(cat, p.g || 0, p.a || 0);
+              m.cotePtsRaw += ptsThisGame;
+              m.cotePtsWeighted += ptsThisGame * mult;
+              m.multSum += mult;
+              m.multCount += 1;
+              m.details.push({
+                week: w, div: cat, opp: oppTeam, oppPts,
+                g: p.g||0, a: p.a||0,
+                ptsRaw: ptsThisGame, mult, ptsWeighted: ptsThisGame * mult
+              });
             });
-          });
-        };
-        processTeam(game.team1Players, game.team1, game.team2);
-        processTeam(game.team2Players, game.team2, game.team1);
+          };
+          processTeam(game.team1Players, game.team1, game.team2);
+          processTeam(game.team2Players, game.team2, game.team1);
+        });
       });
     });
     return Object.values(map).map(x => {
@@ -1130,9 +1137,10 @@ window.addEventListener('firebase-ready', () => {
         ...x,
         teams: Array.from(x.teams).join(', '),
         jerseys: Array.from(x.jerseys).join('/'),
+        divisions: Array.from(x.divisions).sort().join('+'),
         avgRaw, avgWeighted, avgMult,
-        labelRaw: rateLabel(cat, avgRaw),
-        labelWeighted: rateLabel(cat, avgWeighted)
+        labelRaw: rateLabel(gender === 'F' ? 'F2' : 'H2', avgRaw),
+        labelWeighted: rateLabel(gender === 'F' ? 'F2' : 'H2', avgWeighted)
       };
     });
   }
@@ -1154,42 +1162,44 @@ window.addEventListener('firebase-ready', () => {
   }
 
   function renderRating() {
-    const cat = document.getElementById('rating-cat').value;
+    const gender = document.getElementById('rating-gender').value;
     const weighted = document.getElementById('rating-weighted').checked;
     const wrap = document.getElementById('rating-table-wrap');
-    let players = ratingForCat(cat);
+    let players = ratingForGender(gender);
     // tri selon le mode choisi
     players.sort((a,b) => weighted
       ? (b.avgWeighted - a.avgWeighted || b.cotePtsWeighted - a.cotePtsWeighted)
       : (b.avgRaw - a.avgRaw || b.cotePtsRaw - a.cotePtsRaw));
-    const hasStandings = standingsData[cat] && standingsData[cat]._avg > 0;
-    document.getElementById('rating-count').textContent = `${players.length} joueurs en ${cat} · saison complète`;
+    const cats = gender === 'F' ? ['F2','F3'] : ['H2','H3'];
+    const hasStandings = cats.some(c => standingsData[c] && standingsData[c]._avg > 0);
+    const genderLabel = gender === 'F' ? 'Femmes (F2+F3)' : 'Hommes (H2+H3)';
+    document.getElementById('rating-count').textContent = `${players.length} joueurs · ${genderLabel} · saison complète`;
     if (players.length === 0) {
-      wrap.innerHTML = `<div class="empty-state">Aucune donnée pour ${cat}. Importe des parties d'abord.</div>`;
+      wrap.innerHTML = `<div class="empty-state">Aucune donnée pour ${genderLabel}. Importe des parties d'abord.</div>`;
       return;
     }
-    const butPt = (cat === 'H2' || cat === 'F2') ? '2' : '1';
-    const aidePt = (cat === 'H2' || cat === 'F2') ? '1' : '0,5';
-    let note = `Formule ${cat} : but = ${butPt} pt, aide = ${aidePt} pt`;
+    const d2 = gender === 'F' ? 'F2' : 'H2';
+    const d3 = gender === 'F' ? 'F3' : 'H3';
+    let note = `Formule : ${d2} but=2pts aide=1pt · ${d3} but=1pt aide=0,5pt · chaque partie garde sa formule, puis cumul`;
     if (weighted && !hasStandings) {
-      note += ` · ⚠️ Aucun classement chargé — importe-le pour activer la pondération (sans lui, ×1 partout)`;
+      note += ` · ⚠️ Aucun classement chargé — importe-le pour activer la pondération`;
     } else if (weighted) {
       note += ` · Pondéré entre ×${WEIGHT_MIN} et ×${WEIGHT_MAX} selon l'adversaire`;
     }
     let html = `<div style="font-size:12px; color:#a8a29e; margin-bottom:8px;">${note}</div>`;
-    html += '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th>';
+    html += '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Div.</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th>';
     if (weighted) {
       html += '<th style="text-align:right;">Moy. brute</th><th style="text-align:right;">Mult. moy.</th><th style="text-align:right; background:#eff6ff;">Moy. pondérée</th>';
     } else {
       html += '<th style="text-align:right; background:#eff6ff;">Moy./match</th>';
     }
     html += '<th style="text-align:center;">Cote</th></tr></thead><tbody>';
-    const nColumns = weighted ? 10 : 8;
+    const nColumns = weighted ? 11 : 9;
     players.forEach((p, idx) => {
       const label = weighted ? p.labelWeighted : p.labelRaw;
       const rowId = 'rate_' + idx;
       const clickable = weighted && hasStandings;
-      html += `<tr ${clickable ? `style="cursor:pointer;" data-detail="${rowId}"` : ''}><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(p.teams)}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td>`;
+      html += `<tr ${clickable ? `style="cursor:pointer;" data-detail="${rowId}"` : ''}><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="font-size:11px; color:#78716c;">${escapeHtml(p.divisions)}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(p.teams)}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td>`;
       if (weighted) {
         const arrow = clickable ? '<span style="color:#2563eb; font-size:10px;">▶</span> ' : '';
         html += `<td style="text-align:right; color:#a8a29e;">${p.avgRaw.toFixed(2)}</td><td style="text-align:right; color:#a8a29e;">${arrow}×${p.avgMult.toFixed(2)}</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avgWeighted.toFixed(2)}</td>`;
@@ -1201,10 +1211,10 @@ window.addEventListener('firebase-ready', () => {
       if (clickable) {
         let detailHtml = `<tr id="${rowId}" style="display:none;"><td colspan="${nColumns}" style="background:#fafaf9; padding:0;">`;
         detailHtml += `<div style="padding:10px 16px;"><div style="font-size:11px; color:#78716c; margin-bottom:6px;">Détail des ${p.details.length} partie(s) — chaque match pondéré par la force de l'adversaire :</div>`;
-        detailHtml += `<table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:#a8a29e;"><th style="text-align:left; padding:3px 6px;">Sem.</th><th style="text-align:left; padding:3px 6px;">Adversaire</th><th style="text-align:right; padding:3px 6px;">Pts adv.</th><th style="text-align:right; padding:3px 6px;">B</th><th style="text-align:right; padding:3px 6px;">A</th><th style="text-align:right; padding:3px 6px;">Pts cote</th><th style="text-align:right; padding:3px 6px;">Mult.</th><th style="text-align:right; padding:3px 6px;">Pts pondérés</th></tr></thead><tbody>`;
+        detailHtml += `<table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:#a8a29e;"><th style="text-align:left; padding:3px 6px;">Sem.</th><th style="text-align:left; padding:3px 6px;">Div.</th><th style="text-align:left; padding:3px 6px;">Adversaire</th><th style="text-align:right; padding:3px 6px;">Pts adv.</th><th style="text-align:right; padding:3px 6px;">B</th><th style="text-align:right; padding:3px 6px;">A</th><th style="text-align:right; padding:3px 6px;">Pts cote</th><th style="text-align:right; padding:3px 6px;">Mult.</th><th style="text-align:right; padding:3px 6px;">Pts pondérés</th></tr></thead><tbody>`;
         p.details.forEach(d => {
           const oppPtsStr = d.oppPts === null ? '—' : d.oppPts;
-          detailHtml += `<tr><td style="padding:3px 6px;">S${d.week}</td><td style="padding:3px 6px;">${escapeHtml(d.opp || '?')}</td><td style="text-align:right; padding:3px 6px; color:#78716c;">${oppPtsStr}</td><td style="text-align:right; padding:3px 6px;">${d.g}</td><td style="text-align:right; padding:3px 6px;">${d.a}</td><td style="text-align:right; padding:3px 6px;">${d.ptsRaw % 1 === 0 ? d.ptsRaw : d.ptsRaw.toFixed(1)}</td><td style="text-align:right; padding:3px 6px; font-weight:500; color:${d.mult > 1 ? '#166534' : d.mult < 1 ? '#991b1b' : '#57534e'};">×${d.mult.toFixed(2)}</td><td style="text-align:right; padding:3px 6px; font-weight:600;">${d.ptsWeighted.toFixed(1)}</td></tr>`;
+          detailHtml += `<tr><td style="padding:3px 6px;">S${d.week}</td><td style="padding:3px 6px; color:#78716c;">${d.div}</td><td style="padding:3px 6px;">${escapeHtml(d.opp || '?')}</td><td style="text-align:right; padding:3px 6px; color:#78716c;">${oppPtsStr}</td><td style="text-align:right; padding:3px 6px;">${d.g}</td><td style="text-align:right; padding:3px 6px;">${d.a}</td><td style="text-align:right; padding:3px 6px;">${d.ptsRaw % 1 === 0 ? d.ptsRaw : d.ptsRaw.toFixed(1)}</td><td style="text-align:right; padding:3px 6px; font-weight:500; color:${d.mult > 1 ? '#166534' : d.mult < 1 ? '#991b1b' : '#57534e'};">×${d.mult.toFixed(2)}</td><td style="text-align:right; padding:3px 6px; font-weight:600;">${d.ptsWeighted.toFixed(1)}</td></tr>`;
         });
         detailHtml += `</tbody></table></div></td></tr>`;
         html += detailHtml;
@@ -1866,7 +1876,7 @@ window.addEventListener('firebase-ready', () => {
 
     document.getElementById('t-cat').addEventListener('change', renderTotals);
     document.getElementById('goalie-cat').addEventListener('change', renderGoaliesTable);
-    document.getElementById('rating-cat').addEventListener('change', renderRating);
+    document.getElementById('rating-gender').addEventListener('change', renderRating);
     document.getElementById('rating-weighted').addEventListener('change', renderRating);
     document.getElementById('rating-fetch-standings').addEventListener('click', async () => {
       const status = document.getElementById('rating-standings-status');
