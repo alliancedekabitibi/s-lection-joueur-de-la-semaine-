@@ -291,6 +291,13 @@
   .cat-H3 { background: #ede9fe; color: #5b21b6; }
   .cat-F2 { background: #fce7f3; color: #9d174d; }
   .cat-F3 { background: #d1fae5; color: #065f46; }
+  .rating-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .rating-H1, .rating-F1 { background: #fef3c7; color: #92400e; }
+  .rating-H2, .rating-F2 { background: #dbeafe; color: #1e40af; }
+  .rating-H3, .rating-F3 { background: #e7e5e4; color: #57534e; }
   .empty-state {
     font-size: 14px; color: #78716c;
     padding: 32px; text-align: center;
@@ -376,6 +383,7 @@
     <button class="tab-btn" data-tab="totals">📊 Totaux</button>
     <button class="tab-btn" data-tab="selection">🏆 Sélections</button>
     <button class="tab-btn" data-tab="goalies">🥅 Gardiens</button>
+    <button class="tab-btn" data-tab="rating">⭐ Cotation</button>
     <button class="tab-btn" data-tab="history">🕒 Historique</button>
   </div>
 
@@ -496,6 +504,19 @@
       </div>
       <div id="goalies-table-wrap"></div>
     </div>
+  </div>
+
+  <div id="tab-rating" class="tab-content" style="display:none;">
+    <div style="background:#dbeafe; color:#1e40af; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:16px;">
+      ⭐ Cote calculée sur <strong>toute la saison</strong>. Buts/aides valent 2/1 pts en H2-F2, et 1/0,5 pts en H3-F3. La cote = moyenne de ces points par partie.
+    </div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+      <label style="font-size: 13px; color: #78716c;">Division</label>
+      <select id="rating-cat"></select>
+      <span style="flex:1;"></span>
+      <span id="rating-count" style="font-size: 12px; color: #a8a29e;"></span>
+    </div>
+    <div id="rating-table-wrap"></div>
   </div>
 
   <div id="tab-history" class="tab-content" style="display:none;">
@@ -731,7 +752,7 @@ window.addEventListener('firebase-ready', () => {
   // ===== SELECTORS =====
   function populateCatSelects() {
     const opts = DIVISIONS.map(d => `<option value="${d.code}">${d.code} — ${escapeHtml(d.name)}</option>`).join('');
-    ['g-cat', 't-cat', 'goalie-cat'].forEach(id => {
+    ['g-cat', 't-cat', 'goalie-cat', 'rating-cat'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = opts;
     });
@@ -994,6 +1015,84 @@ window.addEventListener('firebase-ready', () => {
       if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
       return b.svpct - a.svpct || a.gaa - b.gaa || b.sv - a.sv;
     });
+  }
+
+  // ===== COTATION DES JOUEURS (sur toute la saison) =====
+  // Points de cote par division: H2/F2 → but=2, aide=1 ; H3/F3 → but=1, aide=0.5
+  function ratePointsFor(cat, goals, assists) {
+    if (cat === 'H2' || cat === 'F2') return goals * 2 + assists * 1;
+    if (cat === 'H3' || cat === 'F3') return goals * 1 + assists * 0.5;
+    return goals + assists; // fallback
+  }
+
+  // Détermine la cote (H1/H2/H3 ou F1/F2/F3) selon le sexe et la moyenne
+  function rateLabel(cat, avgPerGame) {
+    const isFemme = (cat === 'F2' || cat === 'F3');
+    if (isFemme) {
+      if (avgPerGame > 4) return 'F1';
+      if (avgPerGame >= 2) return 'F2';
+      return 'F3';
+    } else {
+      if (avgPerGame > 4) return 'H1';
+      if (avgPerGame >= 1.9) return 'H2';
+      return 'H3';
+    }
+  }
+
+  // Cumule TOUTES les semaines pour une division donnée, calcule la cote de chaque joueur
+  function ratingForCat(cat) {
+    const map = {};
+    Object.keys(weeksData).forEach(w => {
+      const wd = weeksData[w];
+      const games = (wd.games || []).filter(g => g.cat === cat);
+      function addPlayers(players, teamName) {
+        (players || []).forEach(p => {
+          const k = playerKey(p);
+          if (!map[k]) map[k] = { key: k, name: p.name, teams: new Set(), jerseys: new Set(), gp:0, g:0, a:0 };
+          if (teamName) map[k].teams.add(teamName);
+          if (p.jersey) map[k].jerseys.add(p.jersey);
+          map[k].gp += (p.gp || 0);
+          map[k].g += (p.g || 0);
+          map[k].a += (p.a || 0);
+        });
+      }
+      games.forEach(game => {
+        addPlayers(game.team1Players, game.team1);
+        addPlayers(game.team2Players, game.team2);
+      });
+    });
+    return Object.values(map).map(x => {
+      const cotePts = ratePointsFor(cat, x.g, x.a);
+      const avg = x.gp > 0 ? cotePts / x.gp : 0;
+      return {
+        ...x,
+        teams: Array.from(x.teams).join(', '),
+        jerseys: Array.from(x.jerseys).join('/'),
+        cotePts,
+        avg,
+        label: rateLabel(cat, avg)
+      };
+    }).sort((a,b) => b.avg - a.avg || b.cotePts - a.cotePts);
+  }
+
+  function renderRating() {
+    const cat = document.getElementById('rating-cat').value;
+    const wrap = document.getElementById('rating-table-wrap');
+    const players = ratingForCat(cat);
+    document.getElementById('rating-count').textContent = `${players.length} joueurs en ${cat} · saison complète`;
+    if (players.length === 0) {
+      wrap.innerHTML = `<div class="empty-state">Aucune donnée pour ${cat}. Importe des parties d'abord.</div>`;
+      return;
+    }
+    const butPt = (cat === 'H2' || cat === 'F2') ? '2' : '1';
+    const aidePt = (cat === 'H2' || cat === 'F2') ? '1' : '0,5';
+    let html = `<div style="font-size:12px; color:#a8a29e; margin-bottom:8px;">Formule ${cat} : but = ${butPt} pt, aide = ${aidePt} pt</div>`;
+    html += '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th><th style="text-align:right; background:#eff6ff;">Pts cote</th><th style="text-align:right; background:#eff6ff;">Moy./match</th><th style="text-align:center;">Cote</th></tr></thead><tbody>';
+    players.forEach((p, idx) => {
+      html += `<tr><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(p.teams)}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td><td style="text-align:right; font-weight:500; background:#eff6ff;">${p.cotePts % 1 === 0 ? p.cotePts : p.cotePts.toFixed(1)}</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avg.toFixed(2)}</td><td style="text-align:center;"><span class="rating-badge rating-${p.label}">${p.label}</span></td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
   }
 
   function renderTotals() {
@@ -1458,6 +1557,7 @@ window.addEventListener('firebase-ready', () => {
     else if (activeTab === 'totals') renderTotals();
     else if (activeTab === 'selection') renderSelection();
     else if (activeTab === 'goalies') renderGoalies();
+    else if (activeTab === 'rating') renderRating();
     else if (activeTab === 'history') renderHistory();
   }
 
@@ -1559,6 +1659,7 @@ window.addEventListener('firebase-ready', () => {
 
     document.getElementById('t-cat').addEventListener('change', renderTotals);
     document.getElementById('goalie-cat').addEventListener('change', renderGoaliesTable);
+    document.getElementById('rating-cat').addEventListener('change', renderRating);
   }
 
   // ===== BOOT =====
