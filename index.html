@@ -1444,7 +1444,7 @@ window.addEventListener('firebase-ready', () => {
     CATS.forEach(cat => {
       const players = aggregateForCat('season', cat)
         .slice()
-        .sort((a,b) => b.pts - a.pts || b.g - a.g || b.a - a.a)
+        .sort((a,b) => b.pts - a.pts || a.gp - b.gp || b.g - a.g)
         .slice(0, 3);
       html += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3></div>`;
       if (players.length === 0) {
