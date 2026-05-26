@@ -1442,7 +1442,10 @@ window.addEventListener('firebase-ready', () => {
     const pg = document.getElementById('season-players-grid');
     let html = '';
     CATS.forEach(cat => {
-      const players = aggregateForCat('season', cat).slice(0, 3);
+      const players = aggregateForCat('season', cat)
+        .slice()
+        .sort((a,b) => b.pts - a.pts || b.g - a.g || b.a - a.a)
+        .slice(0, 3);
       html += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3></div>`;
       if (players.length === 0) {
         html += `<p style="font-size:13px; color:#78716c; margin:0;">Aucune donnée.</p>`;
@@ -1452,7 +1455,7 @@ window.addEventListener('firebase-ready', () => {
           html += `<span class="medal medal-${i+1}">${i+1}</span>`;
           html += `<div style="flex:1; min-width:0;"><div class="name">${escapeHtml(p.name)}</div>`;
           if (p.teams) html += `<div class="team">${escapeHtml(p.teams)}</div>`;
-          html += `</div><div class="stats">${p.g}B · ${p.a}A · ${p.pts}pts<strong>${p.ptsPerGame.toFixed(2)} pts/m</strong></div></div>`;
+          html += `</div><div class="stats">${p.g}B · ${p.a}A · ${p.ptsPerGame.toFixed(2)}/m<strong>${p.pts} pts</strong></div></div>`;
         });
       }
       html += `</div>`;
