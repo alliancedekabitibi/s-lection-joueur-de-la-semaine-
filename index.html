@@ -312,7 +312,7 @@
     gap: 10px; margin-top: 8px;
   }
   .history-cell { padding: 10px 12px; background: #fafaf9; border-radius: 8px; }
- 
+
   /* Login modal */
   .modal-overlay {
     position: fixed; inset: 0;
@@ -342,7 +342,7 @@
     font-size: 13px;
     margin-bottom: 16px;
   }
- 
+
   @media (max-width: 600px) {
     body { padding: 10px; }
     .container { padding: 16px; }
@@ -351,7 +351,7 @@
 </style>
 </head>
 <body>
- 
+
 <div class="container">
   <div class="header">
     <div>
@@ -365,17 +365,17 @@
       <button id="auth-btn">🔐 Connexion</button>
     </div>
   </div>
- 
+
   <div class="top-controls" style="margin-bottom: 16px;">
     <label>Semaine</label>
     <select id="week-select" style="min-width: 90px;"></select>
     <button id="new-week-btn" class="admin-only" title="Nouvelle semaine" style="display:none;">+ Nouvelle</button>
   </div>
- 
+
   <div id="read-only-banner" class="read-only-banner" style="display:none;">
     👁 Mode lecture seule — Connecte-toi comme administrateur pour modifier les données.
   </div>
- 
+
   <div class="tabs">
     <button class="tab-btn admin-only active" data-tab="autoimport" style="display:none;">⚡ Import auto</button>
     <button class="tab-btn admin-only" data-tab="add" style="display:none;">✏️ Ajout manuel</button>
@@ -384,14 +384,15 @@
     <button class="tab-btn" data-tab="selection">🏆 Sélections</button>
     <button class="tab-btn" data-tab="goalies">🥅 Gardiens</button>
     <button class="tab-btn" data-tab="rating">⭐ Cotation</button>
+    <button class="tab-btn" data-tab="season">🏆 Saison</button>
     <button class="tab-btn" data-tab="history">🕒 Historique</button>
   </div>
- 
+
   <div id="tab-autoimport" class="tab-content admin-only" style="display:none;">
     <div style="background:#dbeafe; color:#1e40af; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:16px;">
       ⚡ Import automatique depuis SportNinja. Colle ton token une fois, choisis les dates, et tout se charge tout seul.
     </div>
- 
+
     <div style="background:#fafaf9; border:1px solid #e7e5e4; border-radius:8px; padding:16px; margin-bottom:16px;">
       <label style="font-size:12px; color:#78716c; display:block; margin-bottom:4px;">🔑 Token SportNinja (Bearer)</label>
       <input type="password" id="sn-token" placeholder="Colle ton token ici (commence par v2.local...)" style="width:100%; font-family:monospace; font-size:12px;" />
@@ -409,7 +410,7 @@
         <span style="color:#a8a29e;">⚠️ Le token expire après quelques heures. Si l'import échoue, récupère-en un nouveau.</span>
       </div>
     </div>
- 
+
     <div class="form-row" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
       <div>
         <label>Date de début</label>
@@ -427,15 +428,15 @@
         <button id="sn-week-shortcut" style="width:100%;" title="Remplit les 7 derniers jours">📅 7 derniers jours</button>
       </div>
     </div>
- 
+
     <div class="button-row">
       <button id="sn-fetch-games" class="primary">🔍 Trouver les parties</button>
     </div>
- 
+
     <div id="sn-games-list" style="margin-top:16px;"></div>
     <div id="sn-import-result" style="margin-top:12px;"></div>
   </div>
- 
+
   <div id="tab-add" class="tab-content admin-only" style="display:none;">
     <div class="form-row">
       <div>
@@ -443,7 +444,7 @@
         <select id="g-cat"></select>
       </div>
     </div>
- 
+
     <div class="two-teams">
       <div class="team-box team1">
         <h4>🔵 Équipe 1</h4>
@@ -456,7 +457,7 @@
         <textarea id="team1-goalies" placeholder="33&#10;Morane Frenette&#10;1 1 0 0 0 0.850 0 45 0 33 28 5"></textarea>
         <div id="team1-goalie-status" class="detect-badge empty">0 gardien</div>
       </div>
- 
+
       <div class="team-box team2">
         <h4>🔴 Équipe 2</h4>
         <label>Nom de l'équipe</label>
@@ -469,16 +470,16 @@
         <div id="team2-goalie-status" class="detect-badge empty">0 gardien</div>
       </div>
     </div>
- 
+
     <div class="button-row">
       <button id="save-game-btn" class="primary">💾 Enregistrer la partie</button>
       <button id="clear-form-btn">🗑 Vider le formulaire</button>
     </div>
     <div id="save-result"></div>
   </div>
- 
+
   <div id="tab-games" class="tab-content"><div id="games-list"></div></div>
- 
+
   <div id="tab-totals" class="tab-content" style="display:none;">
     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
       <label style="font-size: 13px; color: #78716c;">Division</label>
@@ -488,12 +489,12 @@
     </div>
     <div id="totals-table-wrap"></div>
   </div>
- 
+
   <div id="tab-selection" class="tab-content" style="display:none;">
     <p style="font-size: 13px; color: #78716c; margin: 0 0 16px;">Top 3 par division classé selon la <strong>moyenne de points par match</strong>. <span class="admin-only">Clique sur un joueur pour le couronner.</span></p>
     <div id="selection-grid" class="top-grid"></div>
   </div>
- 
+
   <div id="tab-goalies" class="tab-content" style="display:none;">
     <p style="font-size: 13px; color: #78716c; margin: 0 0 16px;">Top 3 gardiens par division, classés par <strong>% d'arrêts (SV%)</strong> puis <strong>GAA</strong>. <span class="admin-only">Clique sur un gardien pour le couronner.</span> <span id="goalie-min-note" style="color:#a8a29e;"></span></p>
     <div id="goalies-grid" class="top-grid"></div>
@@ -505,12 +506,12 @@
       <div id="goalies-table-wrap"></div>
     </div>
   </div>
- 
+
   <div id="tab-rating" class="tab-content" style="display:none;">
     <div style="background:#dbeafe; color:#1e40af; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:16px;">
       ⭐ Cote calculée sur <strong>toute la saison</strong>. Buts/aides valent 2/1 pts en H2-F2, et 1/0,5 pts en H3-F3. La cote = moyenne de ces points par partie.
     </div>
- 
+
     <div class="admin-only" style="background:#fafaf9; border:1px solid #e7e5e4; border-radius:8px; padding:14px; margin-bottom:16px;">
       <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
         <button id="rating-fetch-standings">📊 Importer le classement depuis SportNinja</button>
@@ -518,7 +519,7 @@
       </div>
       <div style="font-size:12px; color:#78716c; margin-top:8px;">Le classement sert à pondérer les points selon la force de l'adversaire. Utilise le token de l'onglet « Import auto ».</div>
     </div>
- 
+
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
       <label style="font-size: 13px; color: #78716c;">Catégorie</label>
       <select id="rating-gender">
@@ -533,12 +534,22 @@
     </div>
     <div id="rating-table-wrap"></div>
   </div>
- 
+
+  <div id="tab-season" class="tab-content" style="display:none;">
+    <div style="background:#fef3c7; color:#92400e; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:16px;">
+      🏆 Top 3 de la <strong>saison complète</strong> (cumul de toutes les semaines), par division. Affichage seulement.
+    </div>
+    <h3 style="margin:0 0 12px; font-size:16px;">⭐ Top 3 joueurs</h3>
+    <div id="season-players-grid" class="top-grid"></div>
+    <h3 style="margin:24px 0 12px; font-size:16px;">🥅 Top 3 gardiens</h3>
+    <div id="season-goalies-grid" class="top-grid"></div>
+  </div>
+
   <div id="tab-history" class="tab-content" style="display:none;">
     <div id="history-list"></div>
   </div>
 </div>
- 
+
 <!-- LOGIN MODAL -->
 <div id="login-modal" class="modal-overlay" style="display:none;">
   <div class="modal">
@@ -554,13 +565,13 @@
     </div>
   </div>
 </div>
- 
+
 <!-- Firebase v10 modular SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
- 
+
 // ============================================================
 // 🔥 FIREBASE CONFIG — REMPLACE PAR TA PROPRE CONFIG (étape 4 du guide)
 // ============================================================
@@ -574,21 +585,21 @@ const firebaseConfig = {
   appId: "1:1080925601734:web:7e14a6684c238182eebcc7",
   measurementId: "G-9LNRQH0MV0"
 };
- 
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
- 
+
 // Expose pour usage global dans le script non-module
 window._fb = { auth, db, doc, setDoc, deleteDoc, collection, onSnapshot, query, where, getDocs, signInWithEmailAndPassword, signOut, onAuthStateChanged };
 window.dispatchEvent(new Event('firebase-ready'));
 </script>
- 
+
 <script>
 window.addEventListener('firebase-ready', () => {
 (function() {
   const { auth, db, doc, setDoc, deleteDoc, collection, onSnapshot, signInWithEmailAndPassword, signOut, onAuthStateChanged } = window._fb;
- 
+
   // ===== DIVISIONS & TEAMS =====
   const DIVISIONS = [
     { code: 'H2', name: 'Thibault Amos', teams: ['Hyundai Amos', 'Bar chez Frid', 'Hamel Arpentage', 'Pikogan Maikan', 'McDo'] },
@@ -599,18 +610,18 @@ window.addEventListener('firebase-ready', () => {
   const CATS = DIVISIONS.map(d => d.code);
   const TEAMS_BY_CAT = Object.fromEntries(DIVISIONS.map(d => [d.code, d.teams]));
   const DIV_NAME = Object.fromEntries(DIVISIONS.map(d => [d.code, d.name]));
- 
+
   // ===== CONFIG API SPORTNINJA =====
   const SN_API = 'https://metal-api.sportninja.net/v1';
   const SN_SCHEDULE_UID = 'wOtp31BykDbMLUUp'; // ID de ta saison (Saison Location Amos 2026)
   let snToken = ''; // token collé par l'admin, gardé en mémoire seulement
- 
+
   // Classement importé: standingsData[cat] = { 'Nom équipe': points, ... } + _avg
   let standingsData = {};
   // Bornes de pondération (Option A bornée, validée)
   const WEIGHT_MIN = 0.7;
   const WEIGHT_MAX = 1.3;
- 
+
   // Multiplicateur d'un adversaire selon ses points vs la moyenne de la division
   function weightForOpponent(cat, opponentName) {
     const st = standingsData[cat];
@@ -634,8 +645,8 @@ window.addEventListener('firebase-ready', () => {
     if (mult > WEIGHT_MAX) mult = WEIGHT_MAX;
     return mult;
   }
- 
- 
+
+
   // Associe une équipe SportNinja à une de nos divisions, par son nom.
   // Construit une fois depuis nos listes d'équipes.
   function findDivisionForTeam(teamName) {
@@ -655,14 +666,14 @@ window.addEventListener('firebase-ready', () => {
     }
     return null;
   }
- 
+
   // ===== STATE =====
   let weeksData = {}; // { weekNum: { games: [], selections: {} } }
   let currentWeek = 2;
   let activeTab = 'games';
   let isAdmin = false;
   let unsubscribes = [];
- 
+
   // ===== HELPERS =====
   function uid() { return 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
   function escapeHtml(s) {
@@ -674,7 +685,7 @@ window.addEventListener('firebase-ready', () => {
     if (!weeksData[w].goalieSelections) weeksData[w].goalieSelections = {};
     return weeksData[w];
   }
- 
+
   // ===== AUTH UI =====
   function updateAdminUI() {
     document.querySelectorAll('.admin-only').forEach(el => {
@@ -689,7 +700,7 @@ window.addEventListener('firebase-ready', () => {
     // Re-render pour cacher/montrer les boutons supprimer
     render();
   }
- 
+
   onAuthStateChanged(auth, (user) => {
     isAdmin = !!user;
     const badge = document.getElementById('user-badge');
@@ -705,7 +716,7 @@ window.addEventListener('firebase-ready', () => {
     }
     updateAdminUI();
   });
- 
+
   document.getElementById('auth-btn').addEventListener('click', () => {
     if (isAdmin) {
       if (confirm('Se déconnecter?')) signOut(auth);
@@ -715,11 +726,11 @@ window.addEventListener('firebase-ready', () => {
       document.getElementById('login-email').focus();
     }
   });
- 
+
   document.getElementById('login-cancel').addEventListener('click', () => {
     document.getElementById('login-modal').style.display = 'none';
   });
- 
+
   document.getElementById('login-submit').addEventListener('click', async () => {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
@@ -740,11 +751,11 @@ window.addEventListener('firebase-ready', () => {
       errorDiv.style.display = 'block';
     }
   });
- 
+
   document.getElementById('login-password').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') document.getElementById('login-submit').click();
   });
- 
+
   // ===== FIRESTORE SYNC =====
   function subscribeToWeeks() {
     // Subscribe à la collection "weeks". Chaque doc = une semaine.
@@ -764,7 +775,7 @@ window.addEventListener('firebase-ready', () => {
     });
     unsubscribes.push(unsub);
   }
- 
+
   async function saveWeek(w) {
     if (!isAdmin) return;
     try {
@@ -779,7 +790,7 @@ window.addEventListener('firebase-ready', () => {
       alert('Erreur de sauvegarde : ' + e.message);
     }
   }
- 
+
   async function deleteWeekDoc(w) {
     if (!isAdmin) return;
     try {
@@ -788,7 +799,7 @@ window.addEventListener('firebase-ready', () => {
       alert('Erreur de suppression : ' + e.message);
     }
   }
- 
+
   function updateStatus() {
     if (isSeasonMode()) {
       let total = 0;
@@ -801,7 +812,7 @@ window.addEventListener('firebase-ready', () => {
     const games = wd.games || [];
     document.getElementById('status-line').textContent = `Semaine ${currentWeek} · ${games.length} partie(s)`;
   }
- 
+
   // ===== SELECTORS =====
   function populateCatSelects() {
     const opts = DIVISIONS.map(d => `<option value="${d.code}">${d.code} — ${escapeHtml(d.name)}</option>`).join('');
@@ -817,7 +828,7 @@ window.addEventListener('firebase-ready', () => {
     document.getElementById('team1-select').innerHTML = opts;
     document.getElementById('team2-select').innerHTML = opts;
   }
- 
+
   // ===== PARSER =====
   function parseGame(raw) {
     if (!raw || !raw.trim()) return [];
@@ -834,7 +845,7 @@ window.addEventListener('firebase-ready', () => {
       const parts = l.split(/[\s\t]+/).filter(Boolean);
       parts.forEach(p => tokens.push({ text: p, isNum: /^-?\d+(\.\d+)?$/.test(p) }));
     });
- 
+
     const players = [];
     let i = 0;
     while (i < tokens.length) {
@@ -868,14 +879,14 @@ window.addEventListener('firebase-ready', () => {
     }
     return players;
   }
- 
+
   // ===== PARSEUR GARDIENS =====
   // Format SportNinja gardien: #jersey, Nom, puis 12 nombres:
   // GP, W, L, T, OTL, SV%, SO, MIN, PIM, SA, SV, GA
   const GOALIE_NUM_COUNT = 12;
   // Minimum de tirs reçus dans la semaine pour figurer dans le top 3 (évite les petits échantillons)
   const GOALIE_MIN_SHOTS = 10;
- 
+
   function parseGoalies(raw) {
     if (!raw || !raw.trim()) return [];
     const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -891,7 +902,7 @@ window.addEventListener('firebase-ready', () => {
       const parts = l.split(/[\s\t]+/).filter(Boolean);
       parts.forEach(p => tokens.push({ text: p, isNum: /^-?\d+(\.\d+)?$/.test(p) }));
     });
- 
+
     const goalies = [];
     let i = 0;
     while (i < tokens.length) {
@@ -931,7 +942,7 @@ window.addEventListener('firebase-ready', () => {
     }
     return goalies;
   }
- 
+
   function updateDetectBadge(num) {
     const textarea = document.getElementById(`team${num}-paste`);
     const badge = document.getElementById(`team${num}-status`);
@@ -944,7 +955,7 @@ window.addEventListener('firebase-ready', () => {
       badge.className = 'detect-badge';
     }
   }
- 
+
   function updateGoalieBadge(num) {
     const textarea = document.getElementById(`team${num}-goalies`);
     const badge = document.getElementById(`team${num}-goalie-status`);
@@ -957,7 +968,7 @@ window.addEventListener('firebase-ready', () => {
       badge.className = 'detect-badge';
     }
   }
- 
+
   // ===== RENDER =====
   function renderGames() {
     const wrap = document.getElementById('games-list');
@@ -1016,7 +1027,7 @@ window.addEventListener('firebase-ready', () => {
       });
     }
   }
- 
+
   // Retourne les parties d'une catégorie pour une semaine donnée, ou pour toute la saison si weekNum === 'season'
   function gamesForCat(weekNum, cat) {
     if (weekNum === 'season') {
@@ -1029,7 +1040,7 @@ window.addEventListener('firebase-ready', () => {
     const wd = getWeek(weekNum);
     return (wd.games || []).filter(g => g.cat === cat);
   }
- 
+
   function aggregateForCat(weekNum, cat) {
     const games = gamesForCat(weekNum, cat);
     const map = {};
@@ -1058,7 +1069,7 @@ window.addEventListener('firebase-ready', () => {
       ptsPerGame: x.gp > 0 ? x.pts / x.gp : 0
     })).sort((a,b) => b.ptsPerGame - a.ptsPerGame || b.pts - a.pts || b.g - a.g || b.a - a.a);
   }
- 
+
   function aggregateGoaliesForCat(weekNum, cat) {
     const games = gamesForCat(weekNum, cat);
     const map = {};
@@ -1104,7 +1115,7 @@ window.addEventListener('firebase-ready', () => {
       return b.svpct - a.svpct || a.gaa - b.gaa || b.sv - a.sv;
     });
   }
- 
+
   // ===== COTATION DES JOUEURS (sur toute la saison) =====
   // Points de cote par division: H2/F2 → but=2, aide=1 ; H3/F3 → but=1, aide=0.5
   function ratePointsFor(cat, goals, assists) {
@@ -1112,7 +1123,7 @@ window.addEventListener('firebase-ready', () => {
     if (cat === 'H3' || cat === 'F3') return goals * 1 + assists * 0.5;
     return goals + assists; // fallback
   }
- 
+
   // Détermine la cote (H1/H2/H3 ou F1/F2/F3) selon le sexe et la moyenne
   function rateLabel(cat, avgPerGame) {
     const isFemme = (cat === 'F2' || cat === 'F3');
@@ -1126,7 +1137,7 @@ window.addEventListener('firebase-ready', () => {
       return 'H3';
     }
   }
- 
+
   // Cumule TOUTES les semaines pour les 2 divisions d'un sexe ('H' → H2+H3, 'F' → F2+F3).
   // Chaque partie garde la formule de SA division. Pondération par le classement de SA division.
   function ratingForGender(gender) {
@@ -1186,7 +1197,7 @@ window.addEventListener('firebase-ready', () => {
       };
     });
   }
- 
+
   // Renvoie les points d'une équipe au classement (ou null)
   function getOpponentPoints(cat, oppName) {
     const st = standingsData[cat];
@@ -1202,7 +1213,7 @@ window.addEventListener('firebase-ready', () => {
     }
     return null;
   }
- 
+
   function renderRating() {
     const gender = document.getElementById('rating-gender').value;
     const weighted = document.getElementById('rating-weighted').checked;
@@ -1264,7 +1275,7 @@ window.addEventListener('firebase-ready', () => {
     });
     html += '</tbody></table></div>';
     wrap.innerHTML = html;
- 
+
     // Clics pour déployer le détail
     wrap.querySelectorAll('[data-detail]').forEach(row => {
       row.addEventListener('click', () => {
@@ -1278,7 +1289,7 @@ window.addEventListener('firebase-ready', () => {
       });
     });
   }
- 
+
   function renderTotals() {
     const cat = document.getElementById('t-cat').value;
     const wrap = document.getElementById('totals-table-wrap');
@@ -1296,7 +1307,7 @@ window.addEventListener('firebase-ready', () => {
     html += '</tbody></table></div>';
     wrap.innerHTML = html;
   }
- 
+
   function renderSelection() {
     const grid = document.getElementById('selection-grid');
     const season = isSeasonMode();
@@ -1348,7 +1359,7 @@ window.addEventListener('firebase-ready', () => {
       });
     }
   }
- 
+
   function renderGoalies() {
     const grid = document.getElementById('goalies-grid');
     const season = isSeasonMode();
@@ -1404,7 +1415,7 @@ window.addEventListener('firebase-ready', () => {
     }
     renderGoaliesTable();
   }
- 
+
   function renderGoaliesTable() {
     const cat = document.getElementById('goalie-cat').value;
     const wrap = document.getElementById('goalies-table-wrap');
@@ -1425,7 +1436,51 @@ window.addEventListener('firebase-ready', () => {
     html += '</tbody></table></div>';
     wrap.innerHTML = html;
   }
- 
+
+  function renderSeason() {
+    // Top 3 joueurs par division (cumul saison)
+    const pg = document.getElementById('season-players-grid');
+    let html = '';
+    CATS.forEach(cat => {
+      const players = aggregateForCat('season', cat).slice(0, 3);
+      html += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3></div>`;
+      if (players.length === 0) {
+        html += `<p style="font-size:13px; color:#78716c; margin:0;">Aucune donnée.</p>`;
+      } else {
+        players.forEach((p, i) => {
+          html += `<div class="pick-row read-only">`;
+          html += `<span class="medal medal-${i+1}">${i+1}</span>`;
+          html += `<div style="flex:1; min-width:0;"><div class="name">${escapeHtml(p.name)}</div>`;
+          if (p.teams) html += `<div class="team">${escapeHtml(p.teams)}</div>`;
+          html += `</div><div class="stats">${p.g}B · ${p.a}A · ${p.pts}pts<strong>${p.ptsPerGame.toFixed(2)} pts/m</strong></div></div>`;
+        });
+      }
+      html += `</div>`;
+    });
+    pg.innerHTML = html;
+
+    // Top 3 gardiens par division (cumul saison)
+    const gg = document.getElementById('season-goalies-grid');
+    let ghtml = '';
+    CATS.forEach(cat => {
+      const goalies = aggregateGoaliesForCat('season', cat).filter(g => g.eligible).slice(0, 3);
+      ghtml += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3></div>`;
+      if (goalies.length === 0) {
+        ghtml += `<p style="font-size:13px; color:#78716c; margin:0;">Aucun gardien admissible.</p>`;
+      } else {
+        goalies.forEach((g, i) => {
+          ghtml += `<div class="pick-row read-only">`;
+          ghtml += `<span class="medal medal-${i+1}">${i+1}</span>`;
+          ghtml += `<div style="flex:1; min-width:0;"><div class="name">${escapeHtml(g.name)}</div>`;
+          if (g.teams) ghtml += `<div class="team">${escapeHtml(g.teams)}</div>`;
+          ghtml += `</div><div class="stats">${g.sv}/${g.sa} arr. · ${g.gaa.toFixed(2)} GAA<strong>${(g.svpct*100).toFixed(1)}% SV</strong></div></div>`;
+        });
+      }
+      ghtml += `</div>`;
+    });
+    gg.innerHTML = ghtml;
+  }
+
   function renderHistory() {
     const wrap = document.getElementById('history-list');
     const weeks = Object.keys(weeksData).map(Number).sort((a,b) => b-a);
@@ -1472,12 +1527,12 @@ window.addEventListener('firebase-ready', () => {
       });
     }
   }
- 
+
   // ============================================================
   // ===== IMPORT AUTOMATIQUE DEPUIS SPORTNINJA =====
   // ============================================================
   let snFoundGames = []; // parties trouvées lors du dernier "Trouver les parties"
- 
+
   async function snApiGet(path) {
     const res = await fetch(SN_API + path, {
       method: 'GET',
@@ -1494,7 +1549,7 @@ window.addEventListener('firebase-ready', () => {
     }
     return res.json();
   }
- 
+
   // Extrait une valeur en testant plusieurs noms de champs possibles
   function pick(obj, keys, fallback) {
     for (const k of keys) {
@@ -1502,7 +1557,7 @@ window.addEventListener('firebase-ready', () => {
     }
     return fallback;
   }
- 
+
   // Convertit le tableau "stats" de SportNinja en objet joueur pour notre app
   function snStatsToPlayer(entry) {
     const p = entry.player || {};
@@ -1511,7 +1566,7 @@ window.addEventListener('firebase-ready', () => {
     let name = (first + ' ' + last).trim();
     if (!name) name = pick(p, ['name','full_name','display_name'], '').trim();
     const jersey = String(pick(p, ['jersey','number','player_number','jersey_number'], '') || '');
- 
+
     // stats est un tableau d'objets {name, abbr, value}
     const statArr = entry.stats || [];
     const byAbbr = {};
@@ -1535,7 +1590,7 @@ window.addEventListener('firebase-ready', () => {
     const pim = pick(byAbbr, ['PIM','PUN'], byAbbr._pim || 0);
     return { jersey, name, gp: gp||0, g: g||0, a: a||0, pts: pts||0, pim: pim||0, ppg: 0 };
   }
- 
+
   function snStatsToGoalie(entry) {
     const p = entry.player || {};
     const first = pick(p, ['name_first','first_name','firstName'], '');
@@ -1543,7 +1598,7 @@ window.addEventListener('firebase-ready', () => {
     let name = (first + ' ' + last).trim();
     if (!name) name = pick(p, ['name','full_name','display_name'], '').trim();
     const jersey = String(pick(p, ['jersey','number','player_number','jersey_number'], '') || '');
- 
+
     const statArr = entry.stats || [];
     const byAbbr = {};
     statArr.forEach(s => {
@@ -1560,7 +1615,7 @@ window.addEventListener('firebase-ready', () => {
       sa: pick(byAbbr,['SA'],0), sv: pick(byAbbr,['SV'],0), ga: pick(byAbbr,['GA'],0)
     };
   }
- 
+
   // Récupère la liste des parties pour une plage de dates
   async function snFetchGames(dateStart, dateEnd) {
     const after = dateStart + 'T00:00:00';
@@ -1596,7 +1651,7 @@ window.addEventListener('firebase-ready', () => {
       };
     });
   }
- 
+
   // Récupère les stats (joueurs + gardiens) d'une équipe dans une partie
   async function snFetchTeamStats(gameId, teamId) {
     const players = [];
@@ -1617,7 +1672,7 @@ window.addEventListener('firebase-ready', () => {
     } catch(e) { /* pas de gardiens */ }
     return { players, goalies };
   }
- 
+
   // Importe le classement et construit standingsData (points par équipe + moyenne par division)
   async function snFetchStandings() {
     const json = await snApiGet(`/schedules/${SN_SCHEDULE_UID}/standings?groupBy=Division&sortBy=232&sort=desc`);
@@ -1639,11 +1694,11 @@ window.addEventListener('firebase-ready', () => {
       if (pts === null) pts = pick(t, ['points','pts'], null);
       return { name, pts: (pts === null || isNaN(pts)) ? null : Number(pts) };
     }
- 
+
     // La structure: data est soit un tableau de divisions, soit un tableau d'équipes
     const data = json.data || json;
     const divisions = Array.isArray(data) ? data : (data.divisions || data.groups || [data]);
- 
+
     divisions.forEach(div => {
       // nom de la division pour matcher nos codes
       const divName = pick(div, ['name','division','title','label'], '');
@@ -1670,7 +1725,7 @@ window.addEventListener('firebase-ready', () => {
         });
       }
     });
- 
+
     // Si rien n'a été groupé (data = liste plate d'équipes), traiter à plat
     if (Object.keys(result).length === 0 && Array.isArray(data)) {
       data.forEach(teamEntry => {
@@ -1682,17 +1737,17 @@ window.addEventListener('firebase-ready', () => {
         result[teamCat][name] = pts;
       });
     }
- 
+
     // Calculer la moyenne de points par division
     Object.keys(result).forEach(cat => {
       const vals = Object.keys(result[cat]).filter(k => k !== '_avg').map(k => result[cat][k]);
       const avg = vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
       result[cat]._avg = avg;
     });
- 
+
     return result;
   }
- 
+
   function snRenderTokenStatus() {
     const el = document.getElementById('sn-token-status');
     if (snToken) {
@@ -1703,7 +1758,7 @@ window.addEventListener('firebase-ready', () => {
       el.style.color = '#a8a29e';
     }
   }
- 
+
   async function snDoFindGames() {
     const resultDiv = document.getElementById('sn-import-result');
     const listDiv = document.getElementById('sn-games-list');
@@ -1740,7 +1795,7 @@ window.addEventListener('firebase-ready', () => {
       }
     }
   }
- 
+
   async function snDoImportSelected() {
     const resultDiv = document.getElementById('sn-import-result');
     const checks = Array.from(document.querySelectorAll('.sn-game-check:checked'));
@@ -1752,7 +1807,7 @@ window.addEventListener('firebase-ready', () => {
     if (!wd.games) wd.games = [];
     let imported = 0, skipped = 0;
     const problems = [];
- 
+
     for (let ci = 0; ci < checks.length; ci++) {
       const idx = parseInt(checks[ci].dataset.idx, 10);
       const g = snFoundGames[idx];
@@ -1784,7 +1839,7 @@ window.addEventListener('firebase-ready', () => {
         skipped++;
       }
     }
- 
+
     await saveWeek(targetWeek);
     // Basculer sur la semaine importée pour voir le résultat
     currentWeek = targetWeek;
@@ -1796,7 +1851,7 @@ window.addEventListener('firebase-ready', () => {
     }
     resultDiv.innerHTML = msg;
   }
- 
+
   function renderWeekSelect() {
     const sel = document.getElementById('week-select');
     const weeks = Object.keys(weeksData).map(Number).sort((a,b) => a-b);
@@ -1807,10 +1862,10 @@ window.addEventListener('firebase-ready', () => {
     opts += weeks.map(w => `<option value="${w}" ${w === currentWeek ? 'selected' : ''}>S ${w}</option>`).join('');
     sel.innerHTML = opts;
   }
- 
+
   // Indique si on est en mode saison (cumul de toutes les semaines)
   function isSeasonMode() { return currentWeek === 'season'; }
- 
+
   function clearForm() {
     document.getElementById('team1-select').value = '';
     document.getElementById('team2-select').value = '';
@@ -1823,7 +1878,7 @@ window.addEventListener('firebase-ready', () => {
     updateGoalieBadge(1);
     updateGoalieBadge(2);
   }
- 
+
   function render() {
     renderWeekSelect();
     updateStatus();
@@ -1832,9 +1887,10 @@ window.addEventListener('firebase-ready', () => {
     else if (activeTab === 'selection') renderSelection();
     else if (activeTab === 'goalies') renderGoalies();
     else if (activeTab === 'rating') renderRating();
+    else if (activeTab === 'season') renderSeason();
     else if (activeTab === 'history') renderHistory();
   }
- 
+
   function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
@@ -1843,17 +1899,17 @@ window.addEventListener('firebase-ready', () => {
     activeTab = tab;
     render();
   }
- 
+
   function bind() {
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
- 
+
     document.getElementById('week-select').addEventListener('change', (e) => {
       currentWeek = e.target.value === 'season' ? 'season' : parseInt(e.target.value, 10);
       render();
     });
- 
+
     document.getElementById('new-week-btn').addEventListener('click', async () => {
       const weeks = Object.keys(weeksData).map(Number);
       const next = weeks.length ? Math.max(...weeks) + 1 : 2;
@@ -1862,13 +1918,13 @@ window.addEventListener('firebase-ready', () => {
       await saveWeek(next);
       render();
     });
- 
+
     document.getElementById('g-cat').addEventListener('change', populateTeamSelects);
     document.getElementById('team1-paste').addEventListener('input', () => updateDetectBadge(1));
     document.getElementById('team2-paste').addEventListener('input', () => updateDetectBadge(2));
     document.getElementById('team1-goalies').addEventListener('input', () => updateGoalieBadge(1));
     document.getElementById('team2-goalies').addEventListener('input', () => updateGoalieBadge(2));
- 
+
     // ===== Import auto =====
     document.getElementById('sn-token').addEventListener('input', (e) => {
       snToken = e.target.value.trim().replace(/^Bearer\s+/i, '');
@@ -1887,7 +1943,7 @@ window.addEventListener('firebase-ready', () => {
       document.getElementById('sn-date-end').value = fmt(end);
     });
     document.getElementById('sn-fetch-games').addEventListener('click', snDoFindGames);
- 
+
     document.getElementById('save-game-btn').addEventListener('click', async () => {
       if (!isAdmin) return;
       const cat = document.getElementById('g-cat').value;
@@ -1898,18 +1954,18 @@ window.addEventListener('firebase-ready', () => {
       const team1Goalies = parseGoalies(document.getElementById('team1-goalies').value);
       const team2Goalies = parseGoalies(document.getElementById('team2-goalies').value);
       const resultDiv = document.getElementById('save-result');
- 
+
       const errors = [];
       if (!team1) errors.push("Choisis l'équipe 1");
       if (!team2) errors.push("Choisis l'équipe 2");
       if (team1 && team2 && team1 === team2) errors.push("Les 2 équipes doivent être différentes");
       if (team1Players.length === 0 && team2Players.length === 0 && team1Goalies.length === 0 && team2Goalies.length === 0) errors.push("Colle les stats d'au moins une équipe");
- 
+
       if (errors.length > 0) {
         resultDiv.innerHTML = `<div class="alert alert-danger">⚠ ${errors.join(' · ')}</div>`;
         return;
       }
- 
+
       const wd = getWeek(currentWeek);
       if (!wd.games) wd.games = [];
       wd.games.push({
@@ -1925,12 +1981,12 @@ window.addEventListener('firebase-ready', () => {
       resultDiv.innerHTML = `<div class="alert alert-success">✓ Partie enregistrée : ${escapeHtml(team1)} vs ${escapeHtml(team2)} en ${cat} (${total} joueurs${totalG ? ', ' + totalG + ' gardien(s)' : ''}). Synchronisée avec Firebase. ✨</div>`;
       clearForm();
     });
- 
+
     document.getElementById('clear-form-btn').addEventListener('click', () => {
       clearForm();
       document.getElementById('save-result').innerHTML = '';
     });
- 
+
     document.getElementById('t-cat').addEventListener('change', renderTotals);
     document.getElementById('goalie-cat').addEventListener('change', renderGoaliesTable);
     document.getElementById('rating-gender').addEventListener('change', renderRating);
@@ -1963,7 +2019,7 @@ window.addEventListener('firebase-ready', () => {
       }
     });
   }
- 
+
   // ===== BOOT =====
   populateCatSelects();
   populateTeamSelects();
@@ -1973,7 +2029,6 @@ window.addEventListener('firebase-ready', () => {
 })();
 });
 </script>
- 
+
 </body>
 </html>
- 
