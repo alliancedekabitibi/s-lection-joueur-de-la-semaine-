@@ -1455,7 +1455,7 @@ window.addEventListener('firebase-ready', () => {
           html += `<span class="medal medal-${i+1}">${i+1}</span>`;
           html += `<div style="flex:1; min-width:0;"><div class="name">${escapeHtml(p.name)}</div>`;
           if (p.teams) html += `<div class="team">${escapeHtml(p.teams)}</div>`;
-          html += `</div><div class="stats">${p.g}B · ${p.a}A · ${p.ptsPerGame.toFixed(2)}/m<strong>${p.pts} pts</strong></div></div>`;
+          html += `</div><div class="stats">${p.gp} PJ · ${p.g}B · ${p.a}A · ${p.ptsPerGame.toFixed(2)}/m<strong>${p.pts} pts</strong></div></div>`;
         });
       }
       html += `</div>`;
@@ -1476,7 +1476,7 @@ window.addEventListener('firebase-ready', () => {
           ghtml += `<span class="medal medal-${i+1}">${i+1}</span>`;
           ghtml += `<div style="flex:1; min-width:0;"><div class="name">${escapeHtml(g.name)}</div>`;
           if (g.teams) ghtml += `<div class="team">${escapeHtml(g.teams)}</div>`;
-          ghtml += `</div><div class="stats">${g.sv}/${g.sa} arr. · ${g.gaa.toFixed(2)} GAA<strong>${(g.svpct*100).toFixed(1)}% SV</strong></div></div>`;
+          ghtml += `</div><div class="stats">${g.gp} PJ · ${g.sv}/${g.sa} arr. · ${g.gaa.toFixed(2)} GAA<strong>${(g.svpct*100).toFixed(1)}% SV</strong></div></div>`;
         });
       }
       ghtml += `</div>`;
