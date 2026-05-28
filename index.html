@@ -1149,10 +1149,17 @@ window.addEventListener('firebase-ready', () => {
   function ratingForGender(gender) {
     const cats = gender === 'F' ? ['F2','F3'] : ['H2','H3'];
     const map = {};
+    // Compter le nombre de parties jouées par chaque équipe (pour le ratio d'éligibilité)
+    const teamGameCount = {};
+    function countTeam(name) {
+      if (!name) return;
+      const k = name.trim().toLowerCase();
+      teamGameCount[k] = (teamGameCount[k] || 0) + 1;
+    }
     function ensure(p) {
       const k = playerKey(p);
       if (!map[k]) map[k] = { key: k, name: p.name, teams: new Set(), jerseys: new Set(), divisions: new Set(),
-        gp:0, g:0, a:0, cotePtsRaw:0, cotePtsWeighted:0, multSum:0, multCount:0, details:[] };
+        gp:0, g:0, a:0, cotePtsRaw:0, cotePtsWeighted:0, multSum:0, multCount:0, details:[], playerTeams: {} };
       return map[k];
     }
     Object.keys(weeksData).map(Number).sort((a,b)=>a-b).forEach(w => {
@@ -1160,12 +1167,15 @@ window.addEventListener('firebase-ready', () => {
       cats.forEach(cat => {
         const games = (wd.games || []).filter(g => g.cat === cat);
         games.forEach(game => {
+          // Compter cette partie pour les 2 équipes
+          countTeam(game.team1);
+          countTeam(game.team2);
           const processTeam = (players, ownTeam, oppTeam) => {
             const mult = weightForOpponent(cat, oppTeam);
             const oppRank = getOpponentRank(cat, oppTeam);
             (players || []).forEach(p => {
               const m = ensure(p);
-              if (ownTeam) m.teams.add(ownTeam);
+              if (ownTeam) { m.teams.add(ownTeam); m.playerTeams[ownTeam.trim().toLowerCase()] = true; }
               if (p.jersey) m.jerseys.add(p.jersey);
               m.divisions.add(cat);
               m.gp += (p.gp || 0);
@@ -1192,12 +1202,18 @@ window.addEventListener('firebase-ready', () => {
       const avgRaw = x.gp > 0 ? x.cotePtsRaw / x.gp : 0;
       const avgWeighted = x.gp > 0 ? x.cotePtsWeighted / x.gp : 0;
       const avgMult = x.multCount > 0 ? x.multSum / x.multCount : 1;
+      // Éligibilité: parties du joueur ÷ total de parties de ses équipes > 25%
+      let teamGames = 0;
+      Object.keys(x.playerTeams).forEach(tk => { teamGames += (teamGameCount[tk] || 0); });
+      const ratio = teamGames > 0 ? x.gp / teamGames : 0;
+      const eligible = ratio > 0.25;
       return {
         ...x,
         teams: Array.from(x.teams).join(', '),
         jerseys: Array.from(x.jerseys).join('/'),
         divisions: Array.from(x.divisions).sort().join('+'),
         avgRaw, avgWeighted, avgMult,
+        teamGames, ratio, eligible,
         labelRaw: rateLabel(gender === 'F' ? 'F2' : 'H2', avgRaw),
         labelWeighted: rateLabel(gender === 'F' ? 'F2' : 'H2', avgWeighted)
       };
@@ -1225,10 +1241,13 @@ window.addEventListener('firebase-ready', () => {
     const weighted = document.getElementById('rating-weighted').checked;
     const wrap = document.getElementById('rating-table-wrap');
     let players = ratingForGender(gender);
-    // tri selon le mode choisi
-    players.sort((a,b) => weighted
-      ? (b.avgWeighted - a.avgWeighted || b.cotePtsWeighted - a.cotePtsWeighted)
-      : (b.avgRaw - a.avgRaw || b.cotePtsRaw - a.cotePtsRaw));
+    // tri: éligibles d'abord, puis selon le mode choisi
+    players.sort((a,b) => {
+      if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+      return weighted
+        ? (b.avgWeighted - a.avgWeighted || b.cotePtsWeighted - a.cotePtsWeighted)
+        : (b.avgRaw - a.avgRaw || b.cotePtsRaw - a.cotePtsRaw);
+    });
     const cats = gender === 'F' ? ['F2','F3'] : ['H2','H3'];
     const hasStandings = cats.some(c => standingsData[c] && Object.keys(standingsData[c]).length > 0);
     const genderLabel = gender === 'F' ? 'Femmes (F2+F3)' : 'Hommes (H2+H3)';
@@ -1239,7 +1258,7 @@ window.addEventListener('firebase-ready', () => {
     }
     const d2 = gender === 'F' ? 'F2' : 'H2';
     const d3 = gender === 'F' ? 'F3' : 'H3';
-    let note = `Formule : ${d2} but=2pts aide=1pt · ${d3} but=1pt aide=0,5pt · chaque partie garde sa formule, puis cumul`;
+    let note = `Formule : ${d2} but=2pts aide=1pt · ${d3} but=1pt aide=0,5pt · chaque partie garde sa formule, puis cumul · N/A si le joueur a joué 25% ou moins des parties de son équipe`;
     if (weighted && !hasStandings) {
       note += ` · ⚠️ Aucun classement chargé — importe-le pour activer la pondération`;
     } else if (weighted) {
@@ -1265,7 +1284,10 @@ window.addEventListener('firebase-ready', () => {
       } else {
         html += `<td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avgRaw.toFixed(2)}</td>`;
       }
-      html += `<td style="text-align:center;"><span class="rating-badge rating-${label}">${label}</span></td></tr>`;
+      const coteCell = p.eligible
+        ? `<span class="rating-badge rating-${label}">${label}</span>`
+        : `<span class="rating-badge" style="background:#f5f5f4; color:#a8a29e;" title="${p.gp}/${p.teamGames} parties de l'équipe (${(p.ratio*100).toFixed(0)}%) — min. plus de 25%">N/A</span>`;
+      html += `<td style="text-align:center;">${coteCell}</td></tr>`;
       // Ligne de détail (cachée par défaut)
       if (clickable) {
         let detailHtml = `<tr id="${rowId}" style="display:none;"><td colspan="${nColumns}" style="background:#fafaf9; padding:0;">`;
