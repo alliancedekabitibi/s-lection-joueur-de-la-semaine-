@@ -616,34 +616,40 @@ window.addEventListener('firebase-ready', () => {
   const SN_SCHEDULE_UID = 'wOtp31BykDbMLUUp'; // ID de ta saison (Saison Location Amos 2026)
   let snToken = ''; // token collé par l'admin, gardé en mémoire seulement
 
-  // Classement importé: standingsData[cat] = { 'Nom équipe': points, ... } + _avg
+  // Classement importé: standingsData[cat] = { 'Nom équipe': rang (1=premier), ... }
   let standingsData = {};
-  // Bornes de pondération (Option A bornée, validée)
-  const WEIGHT_MIN = 0.7;
-  const WEIGHT_MAX = 1.3;
 
-  // Multiplicateur d'un adversaire selon ses points vs la moyenne de la division
+  // Tables de multiplicateurs FIXES selon le RANG de l'adversaire (1 = 1re place).
+  // Index 0 = 1re place, index 1 = 2e place, etc.
+  const RANK_MULTIPLIERS = {
+    H2: [1.4, 1.2, 1.0, 0.8, 0.6],
+    H3: [1.5, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.5],
+    F2: [1.4, 1.2, 1.0, 1.0, 0.8, 0.6],
+    F3: [1.4, 1.2, 1.0, 1.0, 0.8, 0.6, 0.6]
+  };
+
+  // Multiplicateur d'un adversaire selon son RANG au classement de sa division
   function weightForOpponent(cat, opponentName) {
     const st = standingsData[cat];
-    if (!st || !st._avg || st._avg <= 0) return 1; // pas de classement → pas de pondération
+    if (!st) return 1; // pas de classement → pas de pondération
     const norm = s => String(s||'').trim().toLowerCase();
-    let oppPts = null;
+    let rank = null; // rang 1-based
     for (const tname in st) {
       if (tname === '_avg') continue;
-      if (norm(tname) === norm(opponentName)) { oppPts = st[tname]; break; }
+      if (norm(tname) === norm(opponentName)) { rank = st[tname]; break; }
     }
-    if (oppPts === null) {
-      // correspondance partielle
+    if (rank === null) {
       for (const tname in st) {
         if (tname === '_avg') continue;
-        if (norm(tname).includes(norm(opponentName)) || norm(opponentName).includes(norm(tname))) { oppPts = st[tname]; break; }
+        if (norm(tname).includes(norm(opponentName)) || norm(opponentName).includes(norm(tname))) { rank = st[tname]; break; }
       }
     }
-    if (oppPts === null) return 1;
-    let mult = oppPts / st._avg;
-    if (mult < WEIGHT_MIN) mult = WEIGHT_MIN;
-    if (mult > WEIGHT_MAX) mult = WEIGHT_MAX;
-    return mult;
+    if (rank === null) return 1;
+    const table = RANK_MULTIPLIERS[cat];
+    if (!table) return 1;
+    // rang 1 → index 0 ; si le rang dépasse la table, prendre la dernière valeur
+    const idx = Math.min(Math.max(rank - 1, 0), table.length - 1);
+    return table[idx];
   }
 
 
@@ -1156,7 +1162,7 @@ window.addEventListener('firebase-ready', () => {
         games.forEach(game => {
           const processTeam = (players, ownTeam, oppTeam) => {
             const mult = weightForOpponent(cat, oppTeam);
-            const oppPts = getOpponentPoints(cat, oppTeam);
+            const oppRank = getOpponentRank(cat, oppTeam);
             (players || []).forEach(p => {
               const m = ensure(p);
               if (ownTeam) m.teams.add(ownTeam);
@@ -1171,7 +1177,7 @@ window.addEventListener('firebase-ready', () => {
               m.multSum += mult;
               m.multCount += 1;
               m.details.push({
-                week: w, div: cat, opp: oppTeam, oppPts,
+                week: w, div: cat, opp: oppTeam, oppRank,
                 g: p.g||0, a: p.a||0,
                 ptsRaw: ptsThisGame, mult, ptsWeighted: ptsThisGame * mult
               });
@@ -1198,8 +1204,8 @@ window.addEventListener('firebase-ready', () => {
     });
   }
 
-  // Renvoie les points d'une équipe au classement (ou null)
-  function getOpponentPoints(cat, oppName) {
+  // Renvoie le RANG d'une équipe au classement (1 = premier), ou null
+  function getOpponentRank(cat, oppName) {
     const st = standingsData[cat];
     if (!st) return null;
     const norm = s => String(s||'').trim().toLowerCase();
@@ -1224,7 +1230,7 @@ window.addEventListener('firebase-ready', () => {
       ? (b.avgWeighted - a.avgWeighted || b.cotePtsWeighted - a.cotePtsWeighted)
       : (b.avgRaw - a.avgRaw || b.cotePtsRaw - a.cotePtsRaw));
     const cats = gender === 'F' ? ['F2','F3'] : ['H2','H3'];
-    const hasStandings = cats.some(c => standingsData[c] && standingsData[c]._avg > 0);
+    const hasStandings = cats.some(c => standingsData[c] && Object.keys(standingsData[c]).length > 0);
     const genderLabel = gender === 'F' ? 'Femmes (F2+F3)' : 'Hommes (H2+H3)';
     document.getElementById('rating-count').textContent = `${players.length} joueurs · ${genderLabel} · saison complète`;
     if (players.length === 0) {
@@ -1237,7 +1243,7 @@ window.addEventListener('firebase-ready', () => {
     if (weighted && !hasStandings) {
       note += ` · ⚠️ Aucun classement chargé — importe-le pour activer la pondération`;
     } else if (weighted) {
-      note += ` · Pondéré entre ×${WEIGHT_MIN} et ×${WEIGHT_MAX} selon l'adversaire`;
+      note += ` · Pondéré selon le rang de l'adversaire au classement`;
     }
     let html = `<div style="font-size:12px; color:#a8a29e; margin-bottom:8px;">${note}</div>`;
     html += '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Div.</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th>';
@@ -1264,9 +1270,9 @@ window.addEventListener('firebase-ready', () => {
       if (clickable) {
         let detailHtml = `<tr id="${rowId}" style="display:none;"><td colspan="${nColumns}" style="background:#fafaf9; padding:0;">`;
         detailHtml += `<div style="padding:10px 16px;"><div style="font-size:11px; color:#78716c; margin-bottom:6px;">Détail des ${p.details.length} partie(s) — chaque match pondéré par la force de l'adversaire :</div>`;
-        detailHtml += `<table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:#a8a29e;"><th style="text-align:left; padding:3px 6px;">Sem.</th><th style="text-align:left; padding:3px 6px;">Div.</th><th style="text-align:left; padding:3px 6px;">Adversaire</th><th style="text-align:right; padding:3px 6px;">Pts adv.</th><th style="text-align:right; padding:3px 6px;">B</th><th style="text-align:right; padding:3px 6px;">A</th><th style="text-align:right; padding:3px 6px;">Pts cote</th><th style="text-align:right; padding:3px 6px;">Mult.</th><th style="text-align:right; padding:3px 6px;">Pts pondérés</th></tr></thead><tbody>`;
+        detailHtml += `<table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:#a8a29e;"><th style="text-align:left; padding:3px 6px;">Sem.</th><th style="text-align:left; padding:3px 6px;">Div.</th><th style="text-align:left; padding:3px 6px;">Adversaire</th><th style="text-align:right; padding:3px 6px;">Rang adv.</th><th style="text-align:right; padding:3px 6px;">B</th><th style="text-align:right; padding:3px 6px;">A</th><th style="text-align:right; padding:3px 6px;">Pts cote</th><th style="text-align:right; padding:3px 6px;">Mult.</th><th style="text-align:right; padding:3px 6px;">Pts pondérés</th></tr></thead><tbody>`;
         p.details.forEach(d => {
-          const oppPtsStr = d.oppPts === null ? '—' : d.oppPts;
+          const oppPtsStr = d.oppRank === null ? '—' : (d.oppRank === 1 ? '1er' : d.oppRank + 'e');
           detailHtml += `<tr><td style="padding:3px 6px;">S${d.week}</td><td style="padding:3px 6px; color:#78716c;">${d.div}</td><td style="padding:3px 6px;">${escapeHtml(d.opp || '?')}</td><td style="text-align:right; padding:3px 6px; color:#78716c;">${oppPtsStr}</td><td style="text-align:right; padding:3px 6px;">${d.g}</td><td style="text-align:right; padding:3px 6px;">${d.a}</td><td style="text-align:right; padding:3px 6px;">${d.ptsRaw % 1 === 0 ? d.ptsRaw : d.ptsRaw.toFixed(1)}</td><td style="text-align:right; padding:3px 6px; font-weight:500; color:${d.mult > 1 ? '#166534' : d.mult < 1 ? '#991b1b' : '#57534e'};">×${d.mult.toFixed(2)}</td><td style="text-align:right; padding:3px 6px; font-weight:600;">${d.ptsWeighted.toFixed(1)}</td></tr>`;
         });
         detailHtml += `</tbody></table></div></td></tr>`;
@@ -1679,15 +1685,14 @@ window.addEventListener('firebase-ready', () => {
   // Importe le classement et construit standingsData (points par équipe + moyenne par division)
   async function snFetchStandings() {
     const json = await snApiGet(`/schedules/${SN_SCHEDULE_UID}/standings?groupBy=Division&sortBy=232&sort=desc`);
-    // La réponse peut être groupée par division de plusieurs façons; on explore en profondeur
-    const result = {}; // cat -> { teamName: points }
-    // Fonction qui extrait points d'une entrée d'équipe (teste plusieurs structures)
+    const result = {}; // cat -> { teamName: rang(1-based) }
+    // ordre temporaire: cat -> [ {name, pts}, ... ] dans l'ordre du classement
+    const ordered = {};
+
     function extractTeam(entry) {
-      // nom
       const t = entry.team || entry;
       const name = pick(t, ['name_full','full_name','name','team_name'], '') ||
                    pick(entry, ['name_full','full_name','name','team_name'], '');
-      // points: soit champ direct, soit dans un tableau "stats" {abbr:'PTS'}
       let pts = pick(entry, ['points','pts','PTS'], null);
       if (pts === null && Array.isArray(entry.stats)) {
         const s = entry.stats.find(x => String(x.abbr||x.abbreviation||'').toUpperCase() === 'PTS'
@@ -1698,54 +1703,51 @@ window.addEventListener('firebase-ready', () => {
       return { name, pts: (pts === null || isNaN(pts)) ? null : Number(pts) };
     }
 
-    // La structure: data est soit un tableau de divisions, soit un tableau d'équipes
     const data = json.data || json;
     const divisions = Array.isArray(data) ? data : (data.divisions || data.groups || [data]);
 
     divisions.forEach(div => {
-      // nom de la division pour matcher nos codes
       const divName = pick(div, ['name','division','title','label'], '');
-      // équipes dans cette division
       let teams = div.teams || div.standings || div.rows || div.data || (Array.isArray(div) ? div : null);
-      if (!teams && Array.isArray(data) && !div.teams) {
-        // peut-être que "data" est directement la liste des équipes (pas groupé)
-        teams = null;
-      }
       if (Array.isArray(teams)) {
-        // déterminer à quel code de division ça correspond
         let cat = null;
         for (const d of DIVISIONS) {
           if (String(divName).includes(d.name) || String(divName).includes(d.code)) { cat = d.code; break; }
         }
         teams.forEach(teamEntry => {
           const { name, pts } = extractTeam(teamEntry);
-          if (!name || pts === null) return;
-          // si on n'a pas trouvé la division par son nom, la déduire de l'équipe
+          if (!name) return;
           const teamCat = cat || findDivisionForTeam(name);
           if (!teamCat) return;
-          if (!result[teamCat]) result[teamCat] = {};
-          result[teamCat][name] = pts;
+          if (!ordered[teamCat]) ordered[teamCat] = [];
+          ordered[teamCat].push({ name, pts });
         });
       }
     });
 
-    // Si rien n'a été groupé (data = liste plate d'équipes), traiter à plat
-    if (Object.keys(result).length === 0 && Array.isArray(data)) {
+    // Si rien n'a été groupé (data = liste plate), traiter à plat
+    if (Object.keys(ordered).length === 0 && Array.isArray(data)) {
       data.forEach(teamEntry => {
         const { name, pts } = extractTeam(teamEntry);
-        if (!name || pts === null) return;
+        if (!name) return;
         const teamCat = findDivisionForTeam(name);
         if (!teamCat) return;
-        if (!result[teamCat]) result[teamCat] = {};
-        result[teamCat][name] = pts;
+        if (!ordered[teamCat]) ordered[teamCat] = [];
+        ordered[teamCat].push({ name, pts });
       });
     }
 
-    // Calculer la moyenne de points par division
-    Object.keys(result).forEach(cat => {
-      const vals = Object.keys(result[cat]).filter(k => k !== '_avg').map(k => result[cat][k]);
-      const avg = vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
-      result[cat]._avg = avg;
+    // Pour chaque division, trier par points décroissants (au cas où) puis assigner le rang
+    Object.keys(ordered).forEach(cat => {
+      const list = ordered[cat];
+      // Si on a les points, trier par points décroissants pour garantir le bon rang.
+      // Sinon, garder l'ordre d'arrivée (déjà trié par l'API).
+      const hasPts = list.every(x => x.pts !== null);
+      if (hasPts) list.sort((a,b) => b.pts - a.pts);
+      result[cat] = {};
+      list.forEach((team, i) => {
+        result[cat][team.name] = i + 1; // rang 1-based
+      });
     });
 
     return result;
