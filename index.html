@@ -675,6 +675,7 @@ window.addEventListener('firebase-ready', () => {
 
   // ===== STATE =====
   let weeksData = {}; // { weekNum: { games: [], selections: {} } }
+  let mainTeams = {}; // { playerKey: "nom équipe principale" } — pour le ratio d'éligibilité
   let currentWeek = 2;
   let activeTab = 'games';
   let isAdmin = false;
@@ -791,6 +792,25 @@ window.addEventListener('firebase-ready', () => {
         selections: wd.selections || {},
         goalieSelections: wd.goalieSelections || {}
       });
+    } catch(e) {
+      console.error(e);
+      alert('Erreur de sauvegarde : ' + e.message);
+    }
+  }
+
+  // Abonnement au document de configuration (équipes principales)
+  function subscribeToConfig() {
+    const unsub = onSnapshot(doc(db, 'config', 'mainTeams'), (snap) => {
+      mainTeams = snap.exists() ? (snap.data().teams || {}) : {};
+      if (activeTab === 'rating') renderRating();
+    }, (err) => console.error('Erreur config:', err));
+    unsubscribes.push(unsub);
+  }
+
+  async function saveMainTeams() {
+    if (!isAdmin) return;
+    try {
+      await setDoc(doc(db, 'config', 'mainTeams'), { teams: mainTeams });
     } catch(e) {
       console.error(e);
       alert('Erreur de sauvegarde : ' + e.message);
@@ -1202,14 +1222,26 @@ window.addEventListener('firebase-ready', () => {
       const avgRaw = x.gp > 0 ? x.cotePtsRaw / x.gp : 0;
       const avgWeighted = x.gp > 0 ? x.cotePtsWeighted / x.gp : 0;
       const avgMult = x.multCount > 0 ? x.multSum / x.multCount : 1;
-      // Éligibilité: parties du joueur ÷ total de parties de ses équipes > 25%
+      // Liste des équipes du joueur (pour le menu déroulant)
+      const teamList = Array.from(x.teams);
+      // Équipe principale choisie (si définie pour ce joueur)
+      const mainTeam = mainTeams[x.key] || null;
+      // Éligibilité: parties du joueur ÷ parties de référence > 25%
       let teamGames = 0;
-      Object.keys(x.playerTeams).forEach(tk => { teamGames += (teamGameCount[tk] || 0); });
+      if (mainTeam) {
+        // Ratio basé uniquement sur l'équipe principale
+        teamGames = teamGameCount[mainTeam.trim().toLowerCase()] || 0;
+      } else {
+        // Par défaut: total des parties de toutes ses équipes
+        Object.keys(x.playerTeams).forEach(tk => { teamGames += (teamGameCount[tk] || 0); });
+      }
       const ratio = teamGames > 0 ? x.gp / teamGames : 0;
       const eligible = ratio > 0.25;
       return {
         ...x,
-        teams: Array.from(x.teams).join(', '),
+        teams: teamList.join(', '),
+        teamList,
+        mainTeam,
         jerseys: Array.from(x.jerseys).join('/'),
         divisions: Array.from(x.divisions).sort().join('+'),
         avgRaw, avgWeighted, avgMult,
@@ -1277,7 +1309,18 @@ window.addEventListener('firebase-ready', () => {
       const label = weighted ? p.labelWeighted : p.labelRaw;
       const rowId = 'rate_' + idx;
       const clickable = weighted && hasStandings;
-      html += `<tr ${clickable ? `style="cursor:pointer;" data-detail="${rowId}"` : ''}><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="font-size:11px; color:#78716c;">${escapeHtml(p.divisions)}</td><td style="color:#78716c; font-size:12px;">${escapeHtml(p.teams)}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td>`;
+      // Cellule équipe: menu déroulant si 2+ équipes et admin, sinon texte
+      let teamCell;
+      if (isAdmin && p.teamList.length > 1) {
+        let opts = `<option value="">Toutes (${p.teamList.length} éq.)</option>`;
+        p.teamList.forEach(t => {
+          opts += `<option value="${escapeHtml(t)}" ${p.mainTeam === t ? 'selected' : ''}>${escapeHtml(t)}</option>`;
+        });
+        teamCell = `<select class="main-team-select" data-pkey="${escapeHtml(p.key)}" style="font-size:11px; max-width:160px;" onclick="event.stopPropagation();">${opts}</select>`;
+      } else {
+        teamCell = `<span style="color:#78716c; font-size:12px;">${escapeHtml(p.mainTeam || p.teams)}${p.mainTeam && p.teamList.length > 1 ? ' <span style="color:#a8a29e;">(prin.)</span>' : ''}</span>`;
+      }
+      html += `<tr ${clickable ? `style="cursor:pointer;" data-detail="${rowId}"` : ''}><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="font-size:11px; color:#78716c;">${escapeHtml(p.divisions)}</td><td>${teamCell}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td>`;
       if (weighted) {
         const arrow = clickable ? '<span style="color:#2563eb; font-size:10px;">▶</span> ' : '';
         html += `<td style="text-align:right; color:#a8a29e;">${p.avgRaw.toFixed(2)}</td><td style="text-align:right; color:#a8a29e;">${arrow}×${p.avgMult.toFixed(2)}</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avgWeighted.toFixed(2)}</td>`;
@@ -1314,6 +1357,19 @@ window.addEventListener('firebase-ready', () => {
           const arrow = row.querySelector('span');
           if (arrow) arrow.textContent = isHidden ? '▼' : '▶';
         }
+      });
+    });
+
+    // Menu déroulant: choix de l'équipe principale
+    wrap.querySelectorAll('.main-team-select').forEach(sel => {
+      sel.addEventListener('change', async (e) => {
+        e.stopPropagation();
+        const pkey = sel.dataset.pkey;
+        const val = sel.value;
+        if (val) mainTeams[pkey] = val;
+        else delete mainTeams[pkey];
+        await saveMainTeams();
+        renderRating();
       });
     });
   }
@@ -2052,6 +2108,7 @@ window.addEventListener('firebase-ready', () => {
   populateTeamSelects();
   bind();
   subscribeToWeeks();
+  subscribeToConfig();
   switchTab('games'); // par défaut, onglet visible aux invités
 })();
 });
