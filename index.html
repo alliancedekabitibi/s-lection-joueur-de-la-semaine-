@@ -537,7 +537,7 @@
 
   <div id="tab-season" class="tab-content" style="display:none;">
     <div style="background:#fef3c7; color:#92400e; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:16px;">
-      🏆 Top 3 de la <strong>saison complète</strong> (cumul de toutes les semaines), par division. Affichage seulement.
+      🏆 Top 3 de la <strong>saison complète</strong> (cumul de toutes les semaines), par division. <strong>Seuls les joueurs ayant joué plus de 25% des parties de leur équipe sont éligibles.</strong>
     </div>
     <h3 style="margin:0 0 12px; font-size:16px;">⭐ Top 3 joueurs</h3>
     <div id="season-players-grid" class="top-grid"></div>
@@ -1521,18 +1521,48 @@ window.addEventListener('firebase-ready', () => {
     wrap.innerHTML = html;
   }
 
+  // Compte le nombre de parties jouées par chaque équipe pour une division (mode saison ou semaine)
+  function teamGameCountFor(weekNum, cat) {
+    const games = gamesForCat(weekNum, cat);
+    const count = {};
+    const norm = s => String(s||'').trim().toLowerCase();
+    games.forEach(g => {
+      if (g.team1) count[norm(g.team1)] = (count[norm(g.team1)] || 0) + 1;
+      if (g.team2) count[norm(g.team2)] = (count[norm(g.team2)] || 0) + 1;
+    });
+    return count;
+  }
+
+  // Renvoie le nombre de parties de l'équipe (somme si plusieurs) d'un joueur dans une division
+  function playerTeamGames(player, teamCounts) {
+    const norm = s => String(s||'').trim().toLowerCase();
+    const teamNames = (player.teams || '').split(',').map(s => norm(s.trim())).filter(Boolean);
+    let total = 0;
+    teamNames.forEach(t => { total += (teamCounts[t] || 0); });
+    return total;
+  }
+
   function renderSeason() {
-    // Top 3 joueurs par division (cumul saison)
+    // Top 3 joueurs par division (cumul saison), seulement les éligibles >25%
     const pg = document.getElementById('season-players-grid');
     let html = '';
     CATS.forEach(cat => {
-      const players = aggregateForCat('season', cat)
-        .slice()
+      const teamCounts = teamGameCountFor('season', cat);
+      const allPlayers = aggregateForCat('season', cat);
+      // Marquer chaque joueur avec son ratio et son éligibilité
+      const enriched = allPlayers.map(p => {
+        const tg = playerTeamGames(p, teamCounts);
+        const ratio = tg > 0 ? p.gp / tg : 0;
+        return { ...p, teamGames: tg, ratio, eligible: ratio > 0.25 };
+      });
+      const players = enriched
+        .filter(p => p.eligible)
         .sort((a,b) => b.pts - a.pts || a.gp - b.gp || b.g - a.g)
         .slice(0, 3);
+      const excludedCount = enriched.length - enriched.filter(p => p.eligible).length;
       html += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3></div>`;
       if (players.length === 0) {
-        html += `<p style="font-size:13px; color:#78716c; margin:0;">Aucune donnée.</p>`;
+        html += `<p style="font-size:13px; color:#78716c; margin:0;">Aucun joueur éligible (min. plus de 25% des parties de son équipe).</p>`;
       } else {
         players.forEach((p, i) => {
           html += `<div class="pick-row read-only">`;
@@ -1546,14 +1576,22 @@ window.addEventListener('firebase-ready', () => {
     });
     pg.innerHTML = html;
 
-    // Top 3 gardiens par division (cumul saison)
+    // Top 3 gardiens par division (cumul saison): éligibles = assez de tirs ET >25% des parties de l'équipe
     const gg = document.getElementById('season-goalies-grid');
     let ghtml = '';
     CATS.forEach(cat => {
-      const goalies = aggregateGoaliesForCat('season', cat).filter(g => g.eligible).slice(0, 3);
+      const teamCounts = teamGameCountFor('season', cat);
+      const allGoalies = aggregateGoaliesForCat('season', cat);
+      const enriched = allGoalies.map(g => {
+        const tg = playerTeamGames(g, teamCounts);
+        const ratio = tg > 0 ? g.gp / tg : 0;
+        return { ...g, teamGames: tg, ratio, ratioEligible: ratio > 0.25 };
+      });
+      // Doit être éligible au sens "tirs" ET au sens "25%"
+      const goalies = enriched.filter(g => g.eligible && g.ratioEligible).slice(0, 3);
       ghtml += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3></div>`;
       if (goalies.length === 0) {
-        ghtml += `<p style="font-size:13px; color:#78716c; margin:0;">Aucun gardien admissible.</p>`;
+        ghtml += `<p style="font-size:13px; color:#78716c; margin:0;">Aucun gardien admissible (min. ${GOALIE_MIN_SHOTS} tirs reçus + plus de 25% des parties de son équipe).</p>`;
       } else {
         goalies.forEach((g, i) => {
           ghtml += `<div class="pick-row read-only">`;
