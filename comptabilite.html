@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registre comptable</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #F6F7F5;
+    --panel: #FFFFFF;
+    --ink: #1F2A26;
+    --muted: #6B7570;
+    --line: #E2E6E1;
+    --accent: #2F6B4E;
+    --accent-soft: #EAF2ED;
+    --red: #B23A2E;
+    --red-soft: #F9ECEA;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0; background: var(--bg); color: var(--ink); line-height: 1.5;
+  }
+  .topbar {
+    background: var(--ink); color: #fff; padding: 12px 20px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  .topbar .title { font-size: 17px; font-weight: 700; }
+  .topbar .sub { font-size: 12px; color: #A9B4AD; }
+  .topbar button {
+    background: transparent; border: 1px solid #4a564f; color: #fff;
+    border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+  }
+  .tabs {
+    background: var(--panel); border-bottom: 1px solid var(--line);
+    padding: 0 12px; display: flex; gap: 2px; overflow-x: auto;
+  }
+  .tab-btn {
+    border: none; background: transparent; cursor: pointer;
+    padding: 12px 13px; font-size: 13px; white-space: nowrap;
+    color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px;
+  }
+  .tab-btn.active { color: var(--accent); font-weight: 700; border-bottom-color: var(--accent); }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 20px 14px 64px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  label.small {
+    font-size: 11px; color: var(--muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 4px;
+  }
+  input, select {
+    border: 1px solid var(--line); border-radius: 4px; padding: 7px 8px;
+    font-size: 14px; color: var(--ink); background: #fff; width: 100%; font-family: inherit;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  input.num { text-align: right; font-family: var(--mono); }
+  button.btn {
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 4px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button.btn.primary { border: none; background: var(--accent); color: #fff; }
+  button.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.link { border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); font-weight: 600; padding: 8px 10px;
+    border-bottom: 2px solid var(--ink); white-space: nowrap;
+  }
+  th.num, td.num { text-align: right; }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: top; }
+  td.num { font-family: var(--mono); white-space: nowrap; }
+  td.mono { font-family: var(--mono); font-size: 12px; }
+  .totline { border-top: 2px solid var(--ink); font-weight: 700; }
+  .badge {
+    font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 4px; display: inline-block;
+  }
+  .badge.ok { background: var(--accent-soft); color: var(--accent); }
+  .badge.err { background: var(--red-soft); color: var(--red); }
+  .badge.neutral { background: var(--bg); color: var(--muted); }
+  .empty {
+    padding: 40px; text-align: center; color: var(--muted); font-size: 14px;
+    background: var(--panel); border: 1px dashed var(--line); border-radius: 8px;
+  }
+  .toast {
+    position: fixed; top: 14px; right: 14px; background: var(--ink); color: #fff;
+    padding: 10px 16px; border-radius: 6px; font-size: 13px; z-index: 200;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+  .entete-card {
+    background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .table-scroll { overflow-x: auto; }
+  /* Écran de connexion */
+  .login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .login-box {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 28px; max-width: 380px; width: 100%;
+  }
+  .login-box h1 { margin: 0 0 6px; font-size: 20px; }
+  .login-box p { margin: 0 0 18px; font-size: 13px; color: var(--muted); }
+  .login-box label.small { margin-top: 12px; }
+  .alert-err {
+    background: var(--red-soft); color: var(--red); padding: 10px 12px;
+    border-radius: 6px; font-size: 13px; margin-top: 12px;
+  }
+  @media (max-width: 700px) {
+    .wrap { padding: 14px 8px 64px; }
+    td, th { padding: 6px 6px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ÉCRAN DE CONNEXION (données financières = accès admin obligatoire) -->
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <h1>🔐 Registre comptable</h1>
+    <p>Section privée — connecte-toi avec ton compte administrateur (le même que Joueurs de la semaine).</p>
+    <label class="small">Courriel</label>
+    <input type="email" id="login-email" autocomplete="username" />
+    <label class="small">Mot de passe</label>
+    <input type="password" id="login-password" autocomplete="current-password" />
+    <div id="login-error" class="alert-err" style="display:none;"></div>
+    <div style="margin-top:16px;">
+      <button id="login-submit" class="btn primary" style="width:100%;">Se connecter</button>
+    </div>
+  </div>
+</div>
+
+<!-- APPLICATION -->
+<div id="app" style="display:none;">
+  <div class="topbar">
+    <div>
+      <div class="title">Registre comptable</div>
+      <div class="sub" id="statut">Connexion…</div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span class="sub" id="user-email"></span>
+      <button id="logout-btn">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="saisie">Saisie d'écriture</button>
+    <button class="tab-btn" data-tab="journal">Journal général</button>
+    <button class="tab-btn" data-tab="grandlivre">Grand livre</button>
+    <button class="tab-btn" data-tab="balance">Balance de vérification</button>
+    <button class="tab-btn" data-tab="plan">Plan comptable</button>
+  </div>
+
+  <div class="wrap">
+
+    <!-- SAISIE -->
+    <div id="tab-saisie" class="tab-content">
+      <div class="panel">
+        <div style="padding:14px 16px; border-bottom:1px solid var(--line); display:grid; grid-template-columns:140px 120px 1fr; gap:10px;">
+          <div><label class="small">Date</label><input type="date" id="e-date" /></div>
+          <div><label class="small">№ pièce</label><input id="e-piece" style="font-family:var(--mono);" /></div>
+          <div><label class="small">Description</label><input id="e-desc" placeholder="ex. Paie du 15 juillet — Restaurant Amos" /></div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34%;">Compte</th>
+                <th>Note (facultatif)</th>
+                <th class="num" style="width:120px;">Débit</th>
+                <th class="num" style="width:120px;">Crédit</th>
+                <th style="width:34px;"></th>
+              </tr>
+            </thead>
+            <tbody id="e-lignes"></tbody>
+          </table>
+        </div>
+        <div style="padding:10px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <button id="e-add-ligne" class="btn">+ Ajouter une ligne</button>
+          <div style="font-size:13px;">
+            <span style="color:var(--muted); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:0.05em;">Totaux&nbsp;</span>
+            <span class="num" style="font-family:var(--mono); font-weight:700;" id="e-tot-debit">0,00</span>
+            <span style="color:var(--muted);"> DT / </span>
+            <span class="num" style="font-family:var(--mono); font-weight:700;" id="e-tot-credit">0,00</span>
+            <span style="color:var(--muted);"> CT</span>
+          </div>
+        </div>
+        <div style="padding:12px 16px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <span id="e-etat" class="badge neutral">Saisir les montants</span>
+          <button id="e-save" class="btn primary" disabled>Enregistrer l'écriture</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- JOURNAL -->
+    <div id="tab-journal" class="tab-content" style="display:none;">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+        <button id="csv-btn" class="btn">Exporter en CSV</button>
+      </div>
+      <div id="journal-list"></div>
+    </div>
+
+    <!-- GRAND LIVRE -->
+    <div id="tab-grandlivre" class="tab-content" style="display:none;">
+      <div class="panel" style="padding:16px;">
+        <div style="max-width:420px; margin-bottom:14px;">
+          <label class="small">Compte</label>
+          <select id="gl-compte"></select>
+        </div>
+        <div id="gl-table"></div>
+      </div>
+    </div>
+
+    <!-- BALANCE -->
+    <div id="tab-balance" class="tab-content" style="display:none;">
+      <div class="panel">
+        <div style="padding:12px 16px; border-bottom:1px solid var(--line); font-size:13px; color:var(--muted);">
+          Balance de vérification au <span id="bal-date" style="font-family:var(--mono); color:var(--ink);"></span>
+        </div>
+        <div id="bal-table"></div>
+      </div>
+    </div>
+
+    <!-- PLAN COMPTABLE -->
+    <div id="tab-plan" class="tab-content" style="display:none;">
+      <div class="panel">
+        <div style="padding:12px 16px; border-bottom:1px solid var(--line); display:grid; grid-template-columns:100px 1fr 170px auto; gap:8px; align-items:end;">
+          <div><label class="small">№</label><input id="p-num" placeholder="5850" style="font-family:var(--mono);" /></div>
+          <div><label class="small">Nom du compte</label><input id="p-nom" placeholder="ex. Frais de déplacement" /></div>
+          <div><label class="small">Catégorie</label><select id="p-type"></select></div>
+          <button id="p-add" class="btn primary">Ajouter</button>
+        </div>
+        <div class="table-scroll"><div id="plan-table"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Firebase v10 modular SDK — même projet que Joueurs de la semaine -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAxd4VyQLVxJqpfrU1do9u9V3li7R-6le4",
+  authDomain: "joueurs-semaine-dek.firebaseapp.com",
+  databaseURL: "https://joueurs-semaine-dek-default-rtdb.firebaseio.com",
+  projectId: "joueurs-semaine-dek",
+  storageBucket: "joueurs-semaine-dek.firebasestorage.app",
+  messagingSenderId: "1080925601734",
+  appId: "1:1080925601734:web:7e14a6684c238182eebcc7",
+  measurementId: "G-9LNRQH0MV0"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+window._fb = { auth, db, doc, setDoc, deleteDoc, collection, onSnapshot, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<script>
+window.addEventListener('firebase-ready', () => {
+(function() {
+  const { auth, db, doc, setDoc, deleteDoc, collection, onSnapshot, signInWithEmailAndPassword, signOut, onAuthStateChanged } = window._fb;
+
+  // ===== TYPES DE COMPTES =====
+  const TYPES = [
+    { id: 'actif', label: 'Actif', normal: 'debit' },
+    { id: 'passif', label: 'Passif', normal: 'credit' },
+    { id: 'capitaux', label: 'Capitaux propres', normal: 'credit' },
+    { id: 'revenu', label: 'Revenus', normal: 'credit' },
+    { id: 'depense', label: 'Dépenses', normal: 'debit' },
+  ];
+  const TYPE_LABEL = Object.fromEntries(TYPES.map(t => [t.id, t.label]));
+  const TYPE_NORMAL = Object.fromEntries(TYPES.map(t => [t.id, t.normal]));
+
+  const PLAN_DEFAUT = [
+    ['1000','Encaisse','actif'],['1100','Comptes clients','actif'],['1200','Stocks','actif'],
+    ['1300','Frais payés d\'avance','actif'],['1500','Immobilisations','actif'],['1600','Amortissement cumulé','actif'],
+    ['2000','Comptes fournisseurs','passif'],['2100','TPS à payer','passif'],['2110','TVQ à payer','passif'],
+    ['2120','CTI — TPS à recevoir','actif'],['2130','RTI — TVQ à recevoir','actif'],
+    ['2200','Salaires à payer','passif'],['2300','DAS à payer','passif'],['2500','Emprunt bancaire','passif'],
+    ['3000','Capital','capitaux'],['3100','Retraits','capitaux'],['3900','Bénéfices non répartis','capitaux'],
+    ['4000','Ventes','revenu'],['4100','Autres revenus','revenu'],
+    ['5000','Coût des marchandises vendues','depense'],['5100','Salaires','depense'],['5200','Avantages sociaux','depense'],
+    ['5300','Loyer','depense'],['5400','Électricité','depense'],['5500','Assurances','depense'],
+    ['5600','Entretien et réparations','depense'],['5700','Fournitures','depense'],['5800','Frais bancaires','depense'],
+    ['5900','Publicité','depense'],['5950','Amortissement','depense'],
+  ].map(([num, nom, type]) => ({ num, nom, type }));
+
+  // ===== ÉTAT =====
+  let comptes = [];       // [{num, nom, type}]
+  let ecritures = [];     // [{id, date, piece, description, lignes:[{compte, memo, debit, credit}]}]
+  let planCharge = false;
+  let onglet = 'saisie';
+  let lignesSaisie = [];  // lignes du formulaire en cours
+  let unsubs = [];
+
+  // ===== HELPERS =====
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+  const fmt = n => new Intl.NumberFormat('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+  const fmt$ = n => fmt(n) + ' $';
+  const round2 = n => Math.round(n * 100) / 100;
+  const aujourdhui = () => new Date().toISOString().slice(0, 10);
+  const uid = () => 'e_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  function parseMontant(s) {
+    if (s === '' || s == null) return 0;
+    const n = parseFloat(String(s).replace(/\s/g, '').replace(',', '.'));
+    return isNaN(n) ? 0 : round2(n);
+  }
+  const compteParNum = num => comptes.find(c => c.num === num);
+  function toast(txt) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = txt;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+  function prochainNo() {
+    let max = 0;
+    ecritures.forEach(e => {
+      const m = /^EJ-(\d+)$/.exec(e.piece || '');
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return 'EJ-' + String(max + 1).padStart(4, '0');
+  }
+
+  // ===== AUTH =====
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      $('login-screen').style.display = 'none';
+      $('app').style.display = '';
+      $('user-email').textContent = user.email || '';
+      demarrerSync();
+    } else {
+      arreterSync();
+      $('app').style.display = 'none';
+      $('login-screen').style.display = 'flex';
+    }
+  });
+
+  $('login-submit').addEventListener('click', async () => {
+    const email = $('login-email').value.trim();
+    const password = $('login-password').value;
+    const err = $('login-error');
+    err.style.display = 'none';
+    if (!email || !password) {
+      err.textContent = 'Entre ton courriel et ton mot de passe.';
+      err.style.display = 'block';
+      return;
+    }
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      $('login-password').value = '';
+    } catch (e) {
+      err.textContent = e.code === 'auth/invalid-credential' ? 'Courriel ou mot de passe incorrect.' : 'Erreur : ' + e.message;
+      err.style.display = 'block';
+    }
+  });
+  $('login-password').addEventListener('keypress', e => { if (e.key === 'Enter') $('login-submit').click(); });
+  $('logout-btn').addEventListener('click', () => { if (confirm('Se déconnecter?')) signOut(auth); });
+
+  // ===== SYNC FIRESTORE =====
+  // Collections séparées de la ligue :
+  //   compta/plan            → document unique { comptes: [...] }
+  //   compta_ecritures/{id}  → un document par écriture
+  function demarrerSync() {
+    arreterSync();
+    unsubs.push(onSnapshot(doc(db, 'compta', 'plan'), (snap) => {
+      if (snap.exists()) {
+        comptes = (snap.data().comptes || []).slice().sort((a,b) => a.num.localeCompare(b.num));
+      } else {
+        // Premier lancement : installer le plan comptable par défaut
+        comptes = PLAN_DEFAUT.slice();
+        setDoc(doc(db, 'compta', 'plan'), { comptes }).catch(e => console.error(e));
+      }
+      planCharge = true;
+      render();
+    }, (e) => {
+      console.error(e);
+      $('statut').textContent = 'Erreur de connexion — vérifie les règles Firestore';
+    }));
+    unsubs.push(onSnapshot(collection(db, 'compta_ecritures'), (snap) => {
+      ecritures = [];
+      snap.forEach(d => ecritures.push({ id: d.id, ...d.data() }));
+      ecritures.sort((a,b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.piece||'').localeCompare(b.piece||'')));
+      if (!$('e-piece').value || /^EJ-\d+$/.test($('e-piece').value)) $('e-piece').value = prochainNo();
+      render();
+    }, (e) => {
+      console.error(e);
+      $('statut').textContent = 'Erreur de connexion — vérifie les règles Firestore';
+    }));
+  }
+  function arreterSync() { unsubs.forEach(u => u()); unsubs = []; }
+
+  async function sauvegarderPlan() {
+    try { await setDoc(doc(db, 'compta', 'plan'), { comptes }); }
+    catch(e) { alert('Erreur de sauvegarde : ' + e.message); }
+  }
+
+  // ===== SAISIE =====
+  function nouvelleLigne() { return { key: Math.random().toString(36).slice(2), compte: '', memo: '', debit: '', credit: '' }; }
+  function resetSaisie() {
+    lignesSaisie = [nouvelleLigne(), nouvelleLigne()];
+    $('e-date').value = aujourdhui();
+    $('e-piece').value = prochainNo();
+    $('e-desc').value = '';
+    renderSaisie();
+  }
+
+  function optionsComptes(selected) {
+    let html = '<option value="">— choisir un compte —</option>';
+    TYPES.forEach(t => {
+      const list = comptes.filter(c => c.type === t.id);
+      if (!list.length) return;
+      html += `<optgroup label="${esc(t.label)}">`;
+      list.forEach(c => {
+        html += `<option value="${esc(c.num)}" ${selected === c.num ? 'selected' : ''}>${esc(c.num)} · ${esc(c.nom)}</option>`;
+      });
+      html += '</optgroup>';
+    });
+    return html;
+  }
+
+  function totauxSaisie() {
+    let d = 0, c = 0;
+    lignesSaisie.forEach(l => { d += parseMontant(l.debit); c += parseMontant(l.credit); });
+    return { d: round2(d), c: round2(c) };
+  }
+
+  function renderSaisie() {
+    const tbody = $('e-lignes');
+    tbody.innerHTML = lignesSaisie.map(l => `
+      <tr data-key="${l.key}">
+        <td><select class="l-compte">${optionsComptes(l.compte)}</select></td>
+        <td><input class="l-memo" value="${esc(l.memo)}" /></td>
+        <td><input class="l-debit num" inputmode="decimal" placeholder="0,00" value="${esc(l.debit)}" /></td>
+        <td><input class="l-credit num" inputmode="decimal" placeholder="0,00" value="${esc(l.credit)}" /></td>
+        <td style="text-align:center;"><button class="link l-del" title="Retirer" style="color:var(--muted);">✕</button></td>
+      </tr>`).join('');
+
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const key = tr.dataset.key;
+      const ligne = lignesSaisie.find(x => x.key === key);
+      tr.querySelector('.l-compte').addEventListener('change', e => { ligne.compte = e.target.value; });
+      tr.querySelector('.l-memo').addEventListener('input', e => { ligne.memo = e.target.value; });
+      tr.querySelector('.l-debit').addEventListener('input', e => {
+        ligne.debit = e.target.value;
+        if (e.target.value !== '') { ligne.credit = ''; tr.querySelector('.l-credit').value = ''; }
+        majEtat();
+      });
+      tr.querySelector('.l-credit').addEventListener('input', e => {
+        ligne.credit = e.target.value;
+        if (e.target.value !== '') { ligne.debit = ''; tr.querySelector('.l-debit').value = ''; }
+        majEtat();
+      });
+      tr.querySelector('.l-del').addEventListener('click', () => {
+        if (lignesSaisie.length > 2) { lignesSaisie = lignesSaisie.filter(x => x.key !== key); renderSaisie(); }
+      });
+    });
+    majEtat();
+  }
+
+  function majEtat() {
+    const { d, c } = totauxSaisie();
+    $('e-tot-debit').textContent = fmt(d);
+    $('e-tot-credit').textContent = fmt(c);
+    const etat = $('e-etat');
+    const ok = d === c && d > 0;
+    if (ok) { etat.className = 'badge ok'; etat.textContent = '✓ Écriture balancée'; }
+    else if (d + c === 0) { etat.className = 'badge neutral'; etat.textContent = 'Saisir les montants'; }
+    else { etat.className = 'badge err'; etat.textContent = 'Écart de ' + fmt$(Math.abs(d - c)); }
+    $('e-save').disabled = !ok;
+  }
+
+  $('e-add-ligne').addEventListener('click', () => { lignesSaisie.push(nouvelleLigne()); renderSaisie(); });
+
+  $('e-save').addEventListener('click', async () => {
+    const lignes = lignesSaisie
+      .filter(l => l.compte && (parseMontant(l.debit) > 0 || parseMontant(l.credit) > 0))
+      .map(l => ({ compte: l.compte, memo: (l.memo||'').trim(), debit: parseMontant(l.debit), credit: parseMontant(l.credit) }));
+    const { d, c } = totauxSaisie();
+    if (lignes.length < 2 || d !== c || d <= 0) return;
+    const id = uid();
+    const e = {
+      date: $('e-date').value || aujourdhui(),
+      piece: $('e-piece').value.trim() || prochainNo(),
+      description: $('e-desc').value.trim(),
+      lignes
+    };
+    try {
+      await setDoc(doc(db, 'compta_ecritures', id), e);
+      toast('Écriture ' + e.piece + ' enregistrée ✓');
+      resetSaisie();
+    } catch(err) {
+      alert('Erreur de sauvegarde : ' + err.message);
+    }
+  });
+
+  // ===== JOURNAL =====
+  function renderJournal() {
+    const wrap = $('journal-list');
+    if (!ecritures.length) {
+      wrap.innerHTML = '<div class="empty">Aucune écriture pour l\'instant. Va dans « Saisie d\'écriture » pour enregistrer la première.</div>';
+      return;
+    }
+    wrap.innerHTML = ecritures.map(e => `
+      <div class="panel" style="margin-bottom:12px;">
+        <div class="entete-card">
+          <div style="display:flex; gap:12px; align-items:baseline; flex-wrap:wrap;">
+            <span class="mono" style="font-family:var(--mono); font-size:12px; color:var(--muted);">${esc(e.date)}</span>
+            <span style="font-family:var(--mono); font-size:12px; font-weight:700; color:var(--accent);">${esc(e.piece)}</span>
+            <span style="font-size:13px; font-weight:600;">${esc(e.description || '(sans description)')}</span>
+          </div>
+          <button class="link del-ecriture" data-id="${e.id}" style="color:var(--red);">Supprimer</button>
+        </div>
+        <table><tbody>
+          ${e.lignes.map(l => `
+            <tr>
+              <td style="width:50%; padding-left:${l.credit ? 34 : 14}px;">
+                <span style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-right:8px;">${esc(l.compte)}</span>
+                ${esc(compteParNum(l.compte)?.nom || 'Compte inconnu')}
+                ${l.memo ? `<span style="color:var(--muted);"> — ${esc(l.memo)}</span>` : ''}
+              </td>
+              <td class="num" style="width:120px;">${l.debit ? fmt(l.debit) : ''}</td>
+              <td class="num" style="width:120px;">${l.credit ? fmt(l.credit) : ''}</td>
+            </tr>`).join('')}
+        </tbody></table>
+      </div>`).join('');
+    wrap.querySelectorAll('.del-ecriture').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Supprimer cette écriture?')) return;
+        try { await deleteDoc(doc(db, 'compta_ecritures', btn.dataset.id)); toast('Écriture supprimée'); }
+        catch(e) { alert('Erreur : ' + e.message); }
+      });
+    });
+  }
+
+  $('csv-btn').addEventListener('click', () => {
+    if (!ecritures.length) return;
+    const rows = [['Date','Pièce','Description','Compte','Nom du compte','Note','Débit','Crédit']];
+    ecritures.forEach(e => e.lignes.forEach(l => rows.push([
+      e.date, e.piece, e.description, l.compte, compteParNum(l.compte)?.nom || '', l.memo || '',
+      l.debit ? l.debit.toFixed(2) : '', l.credit ? l.credit.toFixed(2) : ''
+    ])));
+    const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(';')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'journal_general.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ===== GRAND LIVRE =====
+  function renderGrandLivre() {
+    $('gl-compte').innerHTML = optionsComptes($('gl-compte').value);
+    const num = $('gl-compte').value;
+    const wrap = $('gl-table');
+    if (!num) { wrap.innerHTML = '<div style="color:var(--muted); font-size:13px;">Choisis un compte pour voir ses mouvements.</div>'; return; }
+    const type = compteParNum(num)?.type;
+    const sensDebit = TYPE_NORMAL[type] === 'debit';
+    const mouvements = [];
+    ecritures.forEach(e => e.lignes.forEach(l => {
+      if (l.compte === num) mouvements.push({ date: e.date, piece: e.piece, desc: e.description, memo: l.memo, debit: l.debit, credit: l.credit });
+    }));
+    if (!mouvements.length) { wrap.innerHTML = '<div style="color:var(--muted); font-size:13px; padding:8px 0;">Aucun mouvement dans ce compte.</div>'; return; }
+    let solde = 0;
+    let html = `<div class="table-scroll"><table><thead><tr>
+      <th>Date</th><th>Pièce</th><th>Description</th>
+      <th class="num">Débit</th><th class="num">Crédit</th><th class="num">Solde ${sensDebit ? '(DT)' : '(CT)'}</th>
+    </tr></thead><tbody>`;
+    mouvements.forEach(m => {
+      solde = round2(solde + (sensDebit ? m.debit - m.credit : m.credit - m.debit));
+      html += `<tr>
+        <td class="mono">${esc(m.date)}</td>
+        <td class="mono" style="color:var(--accent); font-weight:600;">${esc(m.piece)}</td>
+        <td>${esc(m.desc)}${m.memo ? `<span style="color:var(--muted);"> — ${esc(m.memo)}</span>` : ''}</td>
+        <td class="num">${m.debit ? fmt(m.debit) : ''}</td>
+        <td class="num">${m.credit ? fmt(m.credit) : ''}</td>
+        <td class="num" style="font-weight:700; ${solde < 0 ? 'color:var(--red);' : ''}">${fmt(solde)}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+  }
+  $('gl-compte').addEventListener('change', renderGrandLivre);
+
+  // ===== BALANCE =====
+  function renderBalance() {
+    $('bal-date').textContent = aujourdhui();
+    const wrap = $('bal-table');
+    const soldes = {};
+    ecritures.forEach(e => e.lignes.forEach(l => {
+      if (!soldes[l.compte]) soldes[l.compte] = 0;
+      soldes[l.compte] = round2(soldes[l.compte] + l.debit - l.credit);
+    }));
+    let totD = 0, totC = 0;
+    const lignes = comptes
+      .map(c => {
+        const net = soldes[c.num] || 0;
+        if (net === 0) return null;
+        const d = net > 0 ? net : 0;
+        const cr = net < 0 ? -net : 0;
+        totD = round2(totD + d); totC = round2(totC + cr);
+        return { ...c, d, cr };
+      })
+      .filter(Boolean);
+    if (!lignes.length) { wrap.innerHTML = '<div style="padding:36px; text-align:center; color:var(--muted); font-size:14px;">Aucun solde — la balance se remplira au fil des écritures.</div>'; return; }
+    let html = `<div class="table-scroll"><table><thead><tr>
+      <th>№</th><th>Compte</th><th>Catégorie</th>
+      <th class="num">Solde débiteur</th><th class="num">Solde créditeur</th>
+    </tr></thead><tbody>`;
+    lignes.forEach(l => {
+      html += `<tr>
+        <td class="mono">${esc(l.num)}</td><td>${esc(l.nom)}</td>
+        <td style="color:var(--muted); font-size:12px;">${esc(TYPE_LABEL[l.type])}</td>
+        <td class="num">${l.d ? fmt(l.d) : ''}</td><td class="num">${l.cr ? fmt(l.cr) : ''}</td>
+      </tr>`;
+    });
+    html += `<tr>
+      <td colspan="3" style="font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:0.05em; border-bottom:none;">Totaux</td>
+      <td class="num totline" style="border-bottom:none;">${fmt(totD)}</td>
+      <td class="num totline" style="border-bottom:none;">${fmt(totC)}</td>
+    </tr></tbody></table></div>`;
+    wrap.innerHTML = html;
+  }
+
+  // ===== PLAN COMPTABLE =====
+  function renderPlan() {
+    $('p-type').innerHTML = TYPES.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join('');
+    const utilises = {};
+    ecritures.forEach(e => e.lignes.forEach(l => {
+      if (!utilises[l.compte]) utilises[l.compte] = { d: 0, c: 0 };
+      utilises[l.compte].d = round2(utilises[l.compte].d + l.debit);
+      utilises[l.compte].c = round2(utilises[l.compte].c + l.credit);
+    }));
+    let html = `<table><thead><tr>
+      <th>№</th><th>Compte</th><th>Catégorie</th>
+      <th class="num">Mouvements (DT / CT)</th><th style="width:80px;"></th>
+    </tr></thead><tbody>`;
+    comptes.forEach(c => {
+      const u = utilises[c.num];
+      html += `<tr>
+        <td class="mono">${esc(c.num)}</td><td>${esc(c.nom)}</td>
+        <td style="color:var(--muted); font-size:12px;">${esc(TYPE_LABEL[c.type])}</td>
+        <td class="num" style="font-size:12px; color:var(--muted);">${u ? fmt(u.d) + ' / ' + fmt(u.c) : '—'}</td>
+        <td style="text-align:right;">${!u ? `<button class="link p-del" data-num="${esc(c.num)}" style="color:var(--muted);">Retirer</button>` : ''}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    $('plan-table').innerHTML = html;
+    document.querySelectorAll('.p-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        comptes = comptes.filter(c => c.num !== btn.dataset.num);
+        await sauvegarderPlan();
+      });
+    });
+  }
+
+  $('p-add').addEventListener('click', async () => {
+    const num = $('p-num').value.trim();
+    const nom = $('p-nom').value.trim();
+    const type = $('p-type').value;
+    if (!num || !nom) return;
+    if (compteParNum(num)) { toast('Le numéro ' + num + ' existe déjà'); return; }
+    comptes = [...comptes, { num, nom, type }].sort((a,b) => a.num.localeCompare(b.num));
+    await sauvegarderPlan();
+    $('p-num').value = ''; $('p-nom').value = '';
+    toast('Compte ajouté ✓');
+  });
+
+  // ===== ONGLETS & RENDER =====
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+      $('tab-' + btn.dataset.tab).style.display = '';
+      onglet = btn.dataset.tab;
+      render();
+    });
+  });
+
+  function render() {
+    if (!planCharge) return;
+    $('statut').textContent = ecritures.length + ' écriture' + (ecritures.length > 1 ? 's' : '') + ' au journal · synchronisé';
+    // Le formulaire de saisie garde son état ; on rafraîchit seulement les listes de comptes si nécessaire
+    if (onglet === 'saisie' && !$('e-lignes').children.length) resetSaisie();
+    else if (onglet === 'journal') renderJournal();
+    else if (onglet === 'grandlivre') renderGrandLivre();
+    else if (onglet === 'balance') renderBalance();
+    else if (onglet === 'plan') renderPlan();
+  }
+
+  // ===== BOOT =====
+  $('e-date').value = aujourdhui();
+  $('e-piece').value = 'EJ-0001';
+  lignesSaisie = [nouvelleLigne(), nouvelleLigne()];
+})();
+});
+</script>
+
+</body>
+</html>
