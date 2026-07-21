@@ -630,6 +630,8 @@ window.addEventListener('firebase-ready', () => {
   }
 
   // ===== PLAN COMPTABLE =====
+  let compteEnEdition = null; // numéro du compte en cours de modification
+
   function renderPlan() {
     $('p-type').innerHTML = TYPES.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join('');
     const utilises = {};
@@ -640,19 +642,62 @@ window.addEventListener('firebase-ready', () => {
     }));
     let html = `<table><thead><tr>
       <th>№</th><th>Compte</th><th>Catégorie</th>
-      <th class="num">Mouvements (DT / CT)</th><th style="width:80px;"></th>
+      <th class="num">Mouvements (DT / CT)</th><th style="width:130px;"></th>
     </tr></thead><tbody>`;
     comptes.forEach(c => {
       const u = utilises[c.num];
-      html += `<tr>
-        <td class="mono">${esc(c.num)}</td><td>${esc(c.nom)}</td>
-        <td style="color:var(--muted); font-size:12px;">${esc(TYPE_LABEL[c.type])}</td>
-        <td class="num" style="font-size:12px; color:var(--muted);">${u ? fmt(u.d) + ' / ' + fmt(u.c) : '—'}</td>
-        <td style="text-align:right;">${!u ? `<button class="link p-del" data-num="${esc(c.num)}" style="color:var(--muted);">Retirer</button>` : ''}</td>
-      </tr>`;
+      if (compteEnEdition === c.num) {
+        // Ligne en mode édition : nom + catégorie modifiables (le № reste fixe,
+        // car les écritures existantes y font référence)
+        const opts = TYPES.map(t => `<option value="${t.id}" ${c.type === t.id ? 'selected' : ''}>${esc(t.label)}</option>`).join('');
+        html += `<tr style="background:var(--accent-soft);">
+          <td class="mono">${esc(c.num)}</td>
+          <td><input id="edit-nom" value="${esc(c.nom)}" /></td>
+          <td><select id="edit-type">${opts}</select></td>
+          <td class="num" style="font-size:12px; color:var(--muted);">${u ? fmt(u.d) + ' / ' + fmt(u.c) : '—'}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <button class="link p-save-edit" data-num="${esc(c.num)}" style="color:var(--accent);">Enregistrer</button>
+            <button class="link p-cancel-edit" style="color:var(--muted);">Annuler</button>
+          </td>
+        </tr>`;
+      } else {
+        html += `<tr>
+          <td class="mono">${esc(c.num)}</td><td>${esc(c.nom)}</td>
+          <td style="color:var(--muted); font-size:12px;">${esc(TYPE_LABEL[c.type])}</td>
+          <td class="num" style="font-size:12px; color:var(--muted);">${u ? fmt(u.d) + ' / ' + fmt(u.c) : '—'}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <button class="link p-edit" data-num="${esc(c.num)}" style="color:var(--accent);">Modifier</button>
+            ${!u ? `<button class="link p-del" data-num="${esc(c.num)}" style="color:var(--muted);">Retirer</button>` : ''}
+          </td>
+        </tr>`;
+      }
     });
     html += '</tbody></table>';
     $('plan-table').innerHTML = html;
+    document.querySelectorAll('.p-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        compteEnEdition = btn.dataset.num;
+        renderPlan();
+        const inp = $('edit-nom');
+        if (inp) { inp.focus(); inp.select(); }
+      });
+    });
+    document.querySelectorAll('.p-cancel-edit').forEach(btn => {
+      btn.addEventListener('click', () => { compteEnEdition = null; renderPlan(); });
+    });
+    document.querySelectorAll('.p-save-edit').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const num = btn.dataset.num;
+        const nom = $('edit-nom').value.trim();
+        const type = $('edit-type').value;
+        if (!nom) { toast('Le nom ne peut pas être vide'); return; }
+        comptes = comptes.map(c => c.num === num ? { ...c, nom, type } : c);
+        compteEnEdition = null;
+        await sauvegarderPlan();
+        toast('Compte ' + num + ' modifié ✓');
+        renderPlan();
+      });
+    });
     document.querySelectorAll('.p-del').forEach(btn => {
       btn.addEventListener('click', async () => {
         comptes = comptes.filter(c => c.num !== btn.dataset.num);
