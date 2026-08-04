@@ -1576,22 +1576,23 @@ window.addEventListener('firebase-ready', () => {
     });
     pg.innerHTML = html;
 
-    // Top 3 gardiens par division (cumul saison): éligibles = assez de tirs ET >25% des parties de l'équipe
+    // Top 3 gardiens par division (cumul saison): seuil adaptatif = 50% du max de parties jouées par un gardien
     const gg = document.getElementById('season-goalies-grid');
     let ghtml = '';
     CATS.forEach(cat => {
-      const teamCounts = teamGameCountFor('season', cat);
       const allGoalies = aggregateGoaliesForCat('season', cat);
-      const enriched = allGoalies.map(g => {
-        const tg = playerTeamGames(g, teamCounts);
-        const ratio = tg > 0 ? g.gp / tg : 0;
-        return { ...g, teamGames: tg, ratio, ratioEligible: ratio > 0.25 };
-      });
-      // Doit être éligible au sens "tirs" ET au sens "25%"
-      const goalies = enriched.filter(g => g.eligible && g.ratioEligible).slice(0, 3);
+      // Trouver le max de parties jouées par un gardien de cette division
+      const maxGP = allGoalies.reduce((m, g) => Math.max(m, g.gp || 0), 0);
+      // Seuil = moitié du max, arrondi vers le haut (min 1 pour éviter 0)
+      const minGP = maxGP > 0 ? Math.ceil(maxGP / 2) : 0;
+      // Éligible = assez de tirs (règle existante) ET au moins minGP parties
+      const goalies = allGoalies.filter(g => g.eligible && g.gp >= minGP).slice(0, 3);
       ghtml += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3></div>`;
+      if (maxGP > 0) {
+        ghtml += `<div style="font-size:11px; color:#a8a29e; margin-bottom:6px;">Min. ${minGP} PJ (moitié du max ${maxGP}) · ${GOALIE_MIN_SHOTS}+ tirs reçus</div>`;
+      }
       if (goalies.length === 0) {
-        ghtml += `<p style="font-size:13px; color:#78716c; margin:0;">Aucun gardien admissible (min. ${GOALIE_MIN_SHOTS} tirs reçus + plus de 25% des parties de son équipe).</p>`;
+        ghtml += `<p style="font-size:13px; color:#78716c; margin:0;">Aucun gardien admissible.</p>`;
       } else {
         goalies.forEach((g, i) => {
           ghtml += `<div class="pick-row read-only">`;
