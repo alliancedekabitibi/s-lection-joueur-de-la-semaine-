@@ -1576,20 +1576,26 @@ window.addEventListener('firebase-ready', () => {
     });
     pg.innerHTML = html;
 
-    // Top 3 gardiens par division (cumul saison): seuil adaptatif = 50% du max de parties jouées par un gardien
+    // Top 3 gardiens par division (cumul saison): seuil = 50% des parties de son équipe, plafonné à 8
     const gg = document.getElementById('season-goalies-grid');
     let ghtml = '';
     CATS.forEach(cat => {
+      const teamCounts = teamGameCountFor('season', cat);
       const allGoalies = aggregateGoaliesForCat('season', cat);
-      // Trouver le max de parties jouées par un gardien de cette division
-      const maxGP = allGoalies.reduce((m, g) => Math.max(m, g.gp || 0), 0);
-      // Seuil = moitié du max, arrondi vers le haut (min 1 pour éviter 0)
-      const minGP = maxGP > 0 ? Math.ceil(maxGP / 2) : 0;
-      // Éligible = assez de tirs (règle existante) ET au moins minGP parties
-      const goalies = allGoalies.filter(g => g.eligible && g.gp >= minGP).slice(0, 3);
+      // Pour chaque gardien, calculer son seuil selon les parties de son (ou ses) équipe(s)
+      const enriched = allGoalies.map(g => {
+        const teamGames = playerTeamGames(g, teamCounts); // total des parties de ses équipes
+        // Seuil = 50% des parties de son équipe, plafonné à 8, arrondi vers le haut
+        const threshold = teamGames > 0 ? Math.min(Math.ceil(teamGames / 2), 8) : 0;
+        return { ...g, teamGames, threshold, gpEligible: g.gp >= threshold };
+      });
+      // Éligible = assez de tirs (règle existante) ET assez de parties
+      const goalies = enriched.filter(g => g.eligible && g.gpEligible).slice(0, 3);
+      // Trouver le seuil le plus courant (pour l'affichage) — ou le max si divisions inégales
+      const maxThreshold = enriched.reduce((m, g) => Math.max(m, g.threshold), 0);
       ghtml += `<div class="top-card"><div class="card-header"><h3><span class="cat-pill cat-${cat}">${cat}</span> <span style="font-weight:400; font-size:13px; color:#78716c;">${escapeHtml(DIV_NAME[cat])}</span></h3></div>`;
-      if (maxGP > 0) {
-        ghtml += `<div style="font-size:11px; color:#a8a29e; margin-bottom:6px;">Min. ${minGP} PJ (moitié du max ${maxGP}) · ${GOALIE_MIN_SHOTS}+ tirs reçus</div>`;
+      if (maxThreshold > 0) {
+        ghtml += `<div style="font-size:11px; color:#a8a29e; margin-bottom:6px;">Min. ${maxThreshold} PJ (50% des parties de l'équipe, max 8) · ${GOALIE_MIN_SHOTS}+ tirs reçus</div>`;
       }
       if (goalies.length === 0) {
         ghtml += `<p style="font-size:13px; color:#78716c; margin:0;">Aucun gardien admissible.</p>`;
