@@ -512,12 +512,13 @@
       ⭐ Cote calculée sur <strong>toute la saison</strong>. Buts/aides valent 2/1 pts en H2-F2, et 1/0,5 pts en H3-F3. La cote = moyenne de ces points par partie.
     </div>
 
-    <div class="admin-only" style="background:#fafaf9; border:1px solid #e7e5e4; border-radius:8px; padding:14px; margin-bottom:16px;">
+    <div class="admin-only" style="background:#dcfce7; border:1px solid #86efac; border-radius:8px; padding:14px; margin-bottom:16px;">
       <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <button id="rating-fetch-standings">📊 Importer le classement depuis SportNinja</button>
-        <span id="rating-standings-status" style="font-size:12px; color:#a8a29e;">Aucun classement chargé</span>
+        <span style="font-size:13px; color:#166534; font-weight:500;">🔒 Classement final saison 2026 · figé dans l'app</span>
+        <span style="flex:1;"></span>
+        <button id="rating-fetch-standings" style="font-size:12px;">🔄 Réimporter depuis SportNinja</button>
       </div>
-      <div style="font-size:12px; color:#78716c; margin-top:8px;">Le classement sert à pondérer les points selon la force de l'adversaire. Utilise le token de l'onglet « Import auto ».</div>
+      <div style="font-size:12px; color:#57534e; margin-top:8px;">Les cotes utilisent automatiquement le classement final saisonnier. Le réimport n'est utile qu'en cas de changement (retour au classement dynamique jusqu'au prochain rechargement).</div>
     </div>
 
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
@@ -602,11 +603,32 @@ window.addEventListener('firebase-ready', () => {
 
   // ===== DIVISIONS & TEAMS =====
   const DIVISIONS = [
-    { code: 'H2', name: 'Thibault Amos', teams: ['Hyundai Amos', 'Bar chez Frid', 'Hamel Arpentage', 'Pikogan Maikan', 'McDo'] },
+    { code: 'H2', name: 'Thibault Amos', teams: ['Hyundai Amos', 'Bar chez Frid', 'Hamel Arpentage', 'Pikogan Maikan', 'Kraken'] },
     { code: 'H3', name: 'McMines', teams: ['Kirk Hockey Club', 'Nortech solutions', 'comz', 'La Brosse', 'Rihnolining', 'Les supers amis', 'Deshaies', 'Roteux', 'Le Moose', 'Flamingos', 'LMS Industrie', 'Black Knights'] },
     { code: 'F2', name: 'St-Hubert', teams: ['Centre Visuel des Eskers', 'Washaw Sibi Falcons', 'Baho Média', 'La Relève', 'Pikogan nighthawks', 'Pikogan Spartans'] },
     { code: 'F3', name: 'McDo Abitibi', teams: ['Hardy Construction', 'Athena', 'Les Starlettes', 'Mes dentistes', "Mass'eau'Cryolipo", 'Thunder', 'Les Crinquées'] },
   ];
+
+  // Alias d'équipes: différents noms qui désignent la même équipe.
+  // Le premier nom (clé) est le nom officiel; les autres sont des anciens noms.
+  const TEAM_ALIASES = {
+    'Kraken': ['McDo']
+    // Ajouter ici d'autres renommages: 'Nouveau nom': ['Ancien 1', 'Ancien 2']
+  };
+
+  // Normalise un nom d'équipe: si c'est un alias, retourne le nom officiel
+  function canonTeam(name) {
+    if (!name) return name;
+    const norm = s => String(s||'').trim().toLowerCase();
+    const target = norm(name);
+    for (const official in TEAM_ALIASES) {
+      if (norm(official) === target) return official;
+      for (const alias of TEAM_ALIASES[official]) {
+        if (norm(alias) === target) return official;
+      }
+    }
+    return name;
+  }
   const CATS = DIVISIONS.map(d => d.code);
   const TEAMS_BY_CAT = Object.fromEntries(DIVISIONS.map(d => [d.code, d.teams]));
   const DIV_NAME = Object.fromEntries(DIVISIONS.map(d => [d.code, d.name]));
@@ -616,8 +638,53 @@ window.addEventListener('firebase-ready', () => {
   const SN_SCHEDULE_UID = 'wOtp31BykDbMLUUp'; // ID de ta saison (Saison Location Amos 2026)
   let snToken = ''; // token collé par l'admin, gardé en mémoire seulement
 
-  // Classement importé: standingsData[cat] = { 'Nom équipe': rang (1=premier), ... }
-  let standingsData = {};
+  // ===== CLASSEMENT FINAL FIGÉ (saison 2026) =====
+  // Rang 1-based. Utilisé pour calculer les cotes définitives.
+  // Les noms doivent correspondre EXACTEMENT à ceux stockés dans les parties.
+  const FINAL_STANDINGS = {
+    H2: {
+      'Hamel Arpentage': 1,
+      'Bar chez Frid': 2,
+      'Hyundai Amos': 3,
+      'Kraken': 4,
+      'Pikogan Maikan': 5
+    },
+    H3: {
+      'Nortech solutions': 1,
+      'Rihnolining': 2,
+      'La Brosse': 3,
+      'Black Knights': 4,
+      'comz': 5,
+      'Kirk Hockey Club': 6,
+      'Deshaies': 7,
+      'Flamingos': 8,
+      'Les supers amis': 9,
+      'Roteux': 10,
+      'Le Moose': 11,
+      'LMS Industrie': 12
+    },
+    F2: {
+      'Pikogan Spartans': 1,
+      'La Relève': 2,
+      'Baho Média': 3,
+      'Washaw Sibi Falcons': 4,
+      'Centre Visuel des Eskers': 5,
+      'Pikogan nighthawks': 6
+    },
+    F3: {
+      'Les Starlettes': 1,
+      'Mes dentistes': 2,
+      'Athena': 3,
+      "Mass'eau'Cryolipo": 4,
+      'Hardy Construction': 5,
+      'Thunder': 6,
+      'Les Crinquées': 7
+    }
+  };
+
+  // Classement utilisé pour les cotes: standingsData[cat] = { 'Nom équipe': rang }
+  // Initialisé avec le classement FINAL FIGÉ. L'import SportNinja peut le remplacer si besoin.
+  let standingsData = JSON.parse(JSON.stringify(FINAL_STANDINGS));
 
   // Tables de multiplicateurs FIXES selon le RANG de l'adversaire (1 = 1re place).
   // Index 0 = 1re place, index 1 = 2e place, etc.
@@ -657,8 +724,10 @@ window.addEventListener('firebase-ready', () => {
   // Construit une fois depuis nos listes d'équipes.
   function findDivisionForTeam(teamName) {
     if (!teamName) return null;
+    // Normaliser par alias d'abord (McDo -> Kraken, etc.)
+    const canonical = canonTeam(teamName);
     const norm = s => String(s||'').trim().toLowerCase();
-    const target = norm(teamName);
+    const target = norm(canonical);
     for (const d of DIVISIONS) {
       for (const t of d.teams) {
         if (norm(t) === target) return d.code;
@@ -1951,7 +2020,7 @@ window.addEventListener('firebase-ready', () => {
           id: uid(),
           snGameId: g.id,
           cat: g.cat,
-          team1: g.home.name, team2: g.visit.name,
+          team1: canonTeam(g.home.name), team2: canonTeam(g.visit.name),
           team1Players: homeStats.players, team2Players: visitStats.players,
           team1Goalies: homeStats.goalies, team2Goalies: visitStats.goalies,
           ts: Date.now()
@@ -2098,7 +2167,7 @@ window.addEventListener('firebase-ready', () => {
       if (!wd.games) wd.games = [];
       wd.games.push({
         id: uid(),
-        cat, team1, team2,
+        cat, team1: canonTeam(team1), team2: canonTeam(team2),
         team1Players, team2Players,
         team1Goalies, team2Goalies,
         ts: Date.now()
@@ -2120,30 +2189,33 @@ window.addEventListener('firebase-ready', () => {
     document.getElementById('rating-gender').addEventListener('change', renderRating);
     document.getElementById('rating-weighted').addEventListener('change', renderRating);
     document.getElementById('rating-fetch-standings').addEventListener('click', async () => {
-      const status = document.getElementById('rating-standings-status');
-      if (!snToken) { status.textContent = '⚠ Colle d\'abord ton token dans l\'onglet « Import auto »'; status.style.color = '#991b1b'; return; }
-      status.textContent = '⏳ Import du classement…'; status.style.color = '#1e40af';
+      if (!snToken) { alert('Colle d\'abord ton token dans l\'onglet « Import auto ».'); return; }
+      const btn = document.getElementById('rating-fetch-standings');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '⏳ Import du classement…';
       try {
-        standingsData = await snFetchStandings();
-        const divs = Object.keys(standingsData);
+        const fetched = await snFetchStandings();
+        const divs = Object.keys(fetched);
         if (divs.length === 0) {
-          status.textContent = '⚠ Classement reçu mais aucune équipe reconnue. Envoie-moi la console (F12).';
-          status.style.color = '#991b1b';
+          alert('Classement reçu mais aucune équipe reconnue. Vérifie la console (F12).');
           console.log('STANDINGS DEBUG: structure non reconnue');
         } else {
-          const summary = divs.map(c => `${c} (${Object.keys(standingsData[c]).filter(k=>k!=='_avg').length} éq.)`).join(', ');
-          status.textContent = `✓ Classement chargé : ${summary}`;
-          status.style.color = '#166534';
+          standingsData = fetched;
           document.getElementById('rating-weighted').checked = true;
+          const summary = divs.map(c => `${c} (${Object.keys(standingsData[c]).length} éq.)`).join(', ');
+          alert('✓ Classement réimporté : ' + summary + '\n\nNote: le classement final figé sera rétabli au prochain rechargement de la page.');
         }
         renderRating();
       } catch(e) {
         if (e.message === 'TOKEN_INVALIDE') {
-          status.textContent = '🔑 Token expiré. Récupère un nouveau token.';
+          alert('🔑 Token expiré. Récupère un nouveau token.');
         } else {
-          status.textContent = '⚠ ' + e.message;
+          alert('⚠ ' + e.message);
         }
-        status.style.color = '#991b1b';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
       }
     });
   }
