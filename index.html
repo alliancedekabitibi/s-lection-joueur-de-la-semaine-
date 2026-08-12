@@ -638,6 +638,351 @@ window.addEventListener('firebase-ready', () => {
   const SN_SCHEDULE_UID = 'wOtp31BykDbMLUUp'; // ID de ta saison (Saison Location Amos 2026)
   let snToken = ''; // token collé par l'admin, gardé en mémoire seulement
 
+  // ===== COTES HISTORIQUES 2023-2025 =====
+  // Points/match et parties jouées cumulés des saisons antérieures.
+  // Fusionnés avec la saison 2026 par moyenne pondérée sur les PJ.
+  const HISTORICAL_RATINGS = {
+    H: [
+      {"name": "William Arsenault", "ppm": 7.45, "pj": 17, "totalPts": 126.65, "gender": "H"},
+      {"name": "Steven Fournier", "ppm": 7.2705, "pj": 23, "totalPts": 167.22, "gender": "H"},
+      {"name": "Jordan Brière", "ppm": 6.896, "pj": 29, "totalPts": 199.98, "gender": "H"},
+      {"name": "Zachaël Turgeon", "ppm": 6.4933, "pj": 40, "totalPts": 259.73, "gender": "H"},
+      {"name": "Mathias Bourque", "ppm": 6.1708, "pj": 43, "totalPts": 265.34, "gender": "H"},
+      {"name": "Xavier Jarret", "ppm": 5.7238, "pj": 40, "totalPts": 228.95, "gender": "H"},
+      {"name": "Alexis Roy", "ppm": 5.2224, "pj": 24, "totalPts": 125.34, "gender": "H"},
+      {"name": "Maxime Lemaire", "ppm": 4.8885, "pj": 31, "totalPts": 151.54, "gender": "H"},
+      {"name": "Isaac Paré", "ppm": 4.7333, "pj": 22, "totalPts": 104.13, "gender": "H"},
+      {"name": "Thomas Sigouin", "ppm": 4.6999, "pj": 39, "totalPts": 183.29, "gender": "H"},
+      {"name": "Antoine Chouinard", "ppm": 4.6523, "pj": 33, "totalPts": 153.53, "gender": "H"},
+      {"name": "Samuel Bégin", "ppm": 4.5077, "pj": 29, "totalPts": 130.72, "gender": "H"},
+      {"name": "Steeve Bourgelas-Nicol", "ppm": 4.4757, "pj": 19, "totalPts": 85.04, "gender": "H"},
+      {"name": "Billy Blanchette", "ppm": 4.2391, "pj": 34, "totalPts": 144.13, "gender": "H"},
+      {"name": "Maxime Quesnel", "ppm": 4.2336, "pj": 76, "totalPts": 321.75, "gender": "H"},
+      {"name": "Fred-Etienne Bernier", "ppm": 4.0909, "pj": 11, "totalPts": 45.0, "gender": "H"},
+      {"name": "Milan Chartier", "ppm": 4.05, "pj": 5, "totalPts": 20.25, "gender": "H"},
+      {"name": "andrew kistabish", "ppm": 4.0167, "pj": 28, "totalPts": 112.47, "gender": "H"},
+      {"name": "Étienne Turcotte", "ppm": 4.0042, "pj": 28, "totalPts": 112.12, "gender": "H"},
+      {"name": "Max Smith", "ppm": 3.9638, "pj": 43, "totalPts": 170.44, "gender": "H"},
+      {"name": "Jonathan Lavoie", "ppm": 3.6784, "pj": 89, "totalPts": 327.38, "gender": "H"},
+      {"name": "Jaren Otter Ruperthouse", "ppm": 3.4383, "pj": 35, "totalPts": 120.34, "gender": "H"},
+      {"name": "Jean-Michel Naud", "ppm": 3.3971, "pj": 47, "totalPts": 159.66, "gender": "H"},
+      {"name": "Jonathan Germain", "ppm": 3.2317, "pj": 23, "totalPts": 74.33, "gender": "H"},
+      {"name": "Mirko Bolduc", "ppm": 3.1458, "pj": 20, "totalPts": 62.92, "gender": "H"},
+      {"name": "Rudy Sigouin", "ppm": 3.1429, "pj": 7, "totalPts": 22.0, "gender": "H"},
+      {"name": "Dylan Bilodeau", "ppm": 3.1213, "pj": 63, "totalPts": 196.64, "gender": "H"},
+      {"name": "Émile St-Pierre", "ppm": 2.9231, "pj": 13, "totalPts": 38.0, "gender": "H"},
+      {"name": "Donovan Sylvain", "ppm": 2.8719, "pj": 50, "totalPts": 143.59, "gender": "H"},
+      {"name": "Jessy Milot", "ppm": 2.871, "pj": 73, "totalPts": 209.58, "gender": "H"},
+      {"name": "Maxim-Alexandre Fournier", "ppm": 2.8667, "pj": 15, "totalPts": 43.0, "gender": "H"},
+      {"name": "Charles Roy", "ppm": 2.8462, "pj": 43, "totalPts": 122.39, "gender": "H"},
+      {"name": "Jean-Philippe Montmagny", "ppm": 2.7312, "pj": 24, "totalPts": 65.55, "gender": "H"},
+      {"name": "Christopher Côté", "ppm": 2.7232, "pj": 27, "totalPts": 73.53, "gender": "H"},
+      {"name": "Vincent Marcoux", "ppm": 2.606, "pj": 45, "totalPts": 117.27, "gender": "H"},
+      {"name": "Jérémy Jarret", "ppm": 2.5935, "pj": 17, "totalPts": 44.09, "gender": "H"},
+      {"name": "Anthony Gamache", "ppm": 2.5579, "pj": 43, "totalPts": 109.99, "gender": "H"},
+      {"name": "Alexis Legault", "ppm": 2.5517, "pj": 29, "totalPts": 74.0, "gender": "H"},
+      {"name": "Nicolas Rancourt", "ppm": 2.5433, "pj": 39, "totalPts": 99.19, "gender": "H"},
+      {"name": "William Flood", "ppm": 2.5319, "pj": 33, "totalPts": 83.55, "gender": "H"},
+      {"name": "Félix Pomerleau", "ppm": 2.5275, "pj": 53, "totalPts": 133.96, "gender": "H"},
+      {"name": "Alexis Fournier", "ppm": 2.5155, "pj": 28, "totalPts": 70.43, "gender": "H"},
+      {"name": "Samuel Gagnon", "ppm": 2.4582, "pj": 45, "totalPts": 110.62, "gender": "H"},
+      {"name": "Jonathan St-Pierre", "ppm": 2.3653, "pj": 41, "totalPts": 96.98, "gender": "H"},
+      {"name": "Alexandre Lavoie", "ppm": 2.2721, "pj": 28, "totalPts": 63.62, "gender": "H"},
+      {"name": "Louis Niebrzydowski", "ppm": 2.2429, "pj": 31, "totalPts": 69.53, "gender": "H"},
+      {"name": "Charles Bourque", "ppm": 2.2, "pj": 12, "totalPts": 26.4, "gender": "H"},
+      {"name": "Charles-Étienne Labrecque", "ppm": 2.1636, "pj": 28, "totalPts": 60.58, "gender": "H"},
+      {"name": "Jacob St-Pierre", "ppm": 2.0902, "pj": 31, "totalPts": 64.8, "gender": "H"},
+      {"name": "Xavier Corriveau", "ppm": 2.0714, "pj": 36, "totalPts": 74.57, "gender": "H"},
+      {"name": "Sony Boire", "ppm": 2.0333, "pj": 6, "totalPts": 12.2, "gender": "H"},
+      {"name": "Félix Boutin", "ppm": 1.9929, "pj": 40, "totalPts": 79.71, "gender": "H"},
+      {"name": "Daniel Vandal-coute", "ppm": 1.9126, "pj": 31, "totalPts": 59.29, "gender": "H"},
+      {"name": "Eric Angers", "ppm": 1.8945, "pj": 42, "totalPts": 79.57, "gender": "H"},
+      {"name": "Dany Sabourin", "ppm": 1.8939, "pj": 10, "totalPts": 18.94, "gender": "H"},
+      {"name": "Christopher Caron", "ppm": 1.8817, "pj": 46, "totalPts": 86.56, "gender": "H"},
+      {"name": "Miky Tessier", "ppm": 1.8737, "pj": 11, "totalPts": 20.61, "gender": "H"},
+      {"name": "Zachary Godbout", "ppm": 1.85, "pj": 5, "totalPts": 9.25, "gender": "H"},
+      {"name": "Marc-Antoine Fortier", "ppm": 1.8396, "pj": 53, "totalPts": 97.5, "gender": "H"},
+      {"name": "Mathieu Roy", "ppm": 1.7835, "pj": 41, "totalPts": 73.12, "gender": "H"},
+      {"name": "Louis-Philippe Blais", "ppm": 1.7731, "pj": 26, "totalPts": 46.1, "gender": "H"},
+      {"name": "Xavier St-Pierre", "ppm": 1.7692, "pj": 23, "totalPts": 40.69, "gender": "H"},
+      {"name": "Micheal Nadon", "ppm": 1.7567, "pj": 30, "totalPts": 52.7, "gender": "H"},
+      {"name": "Pierre-Charles Crepeault", "ppm": 1.75, "pj": 6, "totalPts": 10.5, "gender": "H"},
+      {"name": "François Lemieux", "ppm": 1.7446, "pj": 26, "totalPts": 45.36, "gender": "H"},
+      {"name": "Philippe Dufour", "ppm": 1.7098, "pj": 30, "totalPts": 51.29, "gender": "H"},
+      {"name": "Marc-André Plante", "ppm": 1.6808, "pj": 38, "totalPts": 63.87, "gender": "H"},
+      {"name": "Sébastien Vezeau-Fortin", "ppm": 1.6744, "pj": 19, "totalPts": 31.81, "gender": "H"},
+      {"name": "Fédérick Lacroix", "ppm": 1.6591, "pj": 21, "totalPts": 34.84, "gender": "H"},
+      {"name": "Emanuel Goyette", "ppm": 1.6429, "pj": 14, "totalPts": 23.0, "gender": "H"},
+      {"name": "Jean-François Quesnel", "ppm": 1.6275, "pj": 39, "totalPts": 63.47, "gender": "H"},
+      {"name": "Milann Larivière", "ppm": 1.6, "pj": 10, "totalPts": 16.0, "gender": "H"},
+      {"name": "Arnol Veillette", "ppm": 1.5833, "pj": 12, "totalPts": 19.0, "gender": "H"},
+      {"name": "Sean Rankin", "ppm": 1.5662, "pj": 29, "totalPts": 45.42, "gender": "H"},
+      {"name": "Zachary Maltais", "ppm": 1.5467, "pj": 18, "totalPts": 27.84, "gender": "H"},
+      {"name": "Benoît Ménard", "ppm": 1.5429, "pj": 21, "totalPts": 32.4, "gender": "H"},
+      {"name": "Cedric Lantagne", "ppm": 1.5357, "pj": 14, "totalPts": 21.5, "gender": "H"},
+      {"name": "Benoit Lantagne", "ppm": 1.5231, "pj": 16, "totalPts": 24.37, "gender": "H"},
+      {"name": "Eliot Côté", "ppm": 1.5182, "pj": 18, "totalPts": 27.33, "gender": "H"},
+      {"name": "Olivier Lussier", "ppm": 1.5096, "pj": 25, "totalPts": 37.74, "gender": "H"},
+      {"name": "Anthony Lebreux", "ppm": 1.5036, "pj": 21, "totalPts": 31.57, "gender": "H"},
+      {"name": "Liam Larivière", "ppm": 1.5, "pj": 12, "totalPts": 18.0, "gender": "H"},
+      {"name": "Raphaël Imbeault", "ppm": 1.5, "pj": 6, "totalPts": 9.0, "gender": "H"},
+      {"name": "David Bruneau", "ppm": 1.5, "pj": 5, "totalPts": 7.5, "gender": "H"},
+      {"name": "Guillaume Boutin", "ppm": 1.5, "pj": 5, "totalPts": 7.5, "gender": "H"},
+      {"name": "Jérémie Ouellet", "ppm": 1.482, "pj": 32, "totalPts": 47.42, "gender": "H"},
+      {"name": "Thomas Caron", "ppm": 1.4761, "pj": 18, "totalPts": 26.57, "gender": "H"},
+      {"name": "Mathis Comeau", "ppm": 1.4708, "pj": 23, "totalPts": 33.83, "gender": "H"},
+      {"name": "Marc-Antoine Bourgault", "ppm": 1.4392, "pj": 33, "totalPts": 47.49, "gender": "H"},
+      {"name": "Dave Rivard", "ppm": 1.3737, "pj": 30, "totalPts": 41.21, "gender": "H"},
+      {"name": "Léo Desjardins", "ppm": 1.3462, "pj": 13, "totalPts": 17.5, "gender": "H"},
+      {"name": "David Trudeau", "ppm": 1.3222, "pj": 21, "totalPts": 27.77, "gender": "H"},
+      {"name": "Jeremy Lambert-Vautour", "ppm": 1.25, "pj": 6, "totalPts": 7.5, "gender": "H"},
+      {"name": "Matthew Morin", "ppm": 1.2333, "pj": 9, "totalPts": 11.1, "gender": "H"},
+      {"name": "Samuel Mapachee", "ppm": 1.2306, "pj": 16, "totalPts": 19.69, "gender": "H"},
+      {"name": "Anthony Rondeau", "ppm": 1.2183, "pj": 22, "totalPts": 26.8, "gender": "H"},
+      {"name": "Michäel Shink", "ppm": 1.2102, "pj": 57, "totalPts": 68.98, "gender": "H"},
+      {"name": "Nicolas Blanchette", "ppm": 1.2072, "pj": 29, "totalPts": 35.01, "gender": "H"},
+      {"name": "Gabriel Fortin", "ppm": 1.1923, "pj": 13, "totalPts": 15.5, "gender": "H"},
+      {"name": "Francis Lariviere", "ppm": 1.175, "pj": 16, "totalPts": 18.8, "gender": "H"},
+      {"name": "Benoit-Claude Deshaies", "ppm": 1.1728, "pj": 27, "totalPts": 31.67, "gender": "H"},
+      {"name": "Mikael Gagne-Germain", "ppm": 1.169, "pj": 23, "totalPts": 26.89, "gender": "H"},
+      {"name": "Malik Chabot", "ppm": 1.1682, "pj": 21, "totalPts": 24.53, "gender": "H"},
+      {"name": "Raphaêl Bolduc", "ppm": 1.1667, "pj": 20, "totalPts": 23.33, "gender": "H"},
+      {"name": "Francis Gosselin", "ppm": 1.16, "pj": 12, "totalPts": 13.92, "gender": "H"},
+      {"name": "Billy Kistabish-Côté", "ppm": 1.147, "pj": 18, "totalPts": 20.65, "gender": "H"},
+      {"name": "Tommy Bolduc", "ppm": 1.1444, "pj": 13, "totalPts": 14.88, "gender": "H"},
+      {"name": "Marc-Antoine Labonville", "ppm": 1.1094, "pj": 33, "totalPts": 36.61, "gender": "H"},
+      {"name": "Louis-David Archambault", "ppm": 1.1, "pj": 5, "totalPts": 5.5, "gender": "H"},
+      {"name": "Pierre Tardif", "ppm": 1.0864, "pj": 22, "totalPts": 23.9, "gender": "H"},
+      {"name": "Sylvain Auger", "ppm": 1.0854, "pj": 37, "totalPts": 40.16, "gender": "H"},
+      {"name": "Samuel Rheault", "ppm": 1.0632, "pj": 48, "totalPts": 51.03, "gender": "H"},
+      {"name": "Sylvester Trapper", "ppm": 1.061, "pj": 28, "totalPts": 29.71, "gender": "H"},
+      {"name": "Anthony Tessier", "ppm": 1.0562, "pj": 22, "totalPts": 23.24, "gender": "H"},
+      {"name": "Andy Mapachee", "ppm": 1.0356, "pj": 15, "totalPts": 15.53, "gender": "H"},
+      {"name": "Jérôme Pronovost", "ppm": 1.0269, "pj": 17, "totalPts": 17.46, "gender": "H"},
+      {"name": "Félix Légaré", "ppm": 1.0267, "pj": 19, "totalPts": 19.51, "gender": "H"},
+      {"name": "Anthony Lacroix", "ppm": 1.0132, "pj": 34, "totalPts": 34.45, "gender": "H"},
+      {"name": "Daniel Daviau", "ppm": 1.01, "pj": 9, "totalPts": 9.09, "gender": "H"},
+      {"name": "Vincent Petit", "ppm": 0.9969, "pj": 29, "totalPts": 28.91, "gender": "H"},
+      {"name": "Kevin Mapachee", "ppm": 0.9711, "pj": 19, "totalPts": 18.45, "gender": "H"},
+      {"name": "Frederik Dorval", "ppm": 0.9475, "pj": 38, "totalPts": 36.01, "gender": "H"},
+      {"name": "Julyan Lamothe", "ppm": 0.9356, "pj": 34, "totalPts": 31.81, "gender": "H"},
+      {"name": "Olivier Cossette", "ppm": 0.935, "pj": 13, "totalPts": 12.15, "gender": "H"},
+      {"name": "Steevy Denis", "ppm": 0.9006, "pj": 41, "totalPts": 36.93, "gender": "H"},
+      {"name": "Dylan Deschênes", "ppm": 0.8835, "pj": 52, "totalPts": 45.94, "gender": "H"},
+      {"name": "Samuel Champagne", "ppm": 0.875, "pj": 12, "totalPts": 10.5, "gender": "H"},
+      {"name": "Jossy Mowatt", "ppm": 0.8695, "pj": 22, "totalPts": 19.13, "gender": "H"},
+      {"name": "Jordan Kistabishh", "ppm": 0.8675, "pj": 9, "totalPts": 7.81, "gender": "H"},
+      {"name": "Jonas Rupert", "ppm": 0.8667, "pj": 9, "totalPts": 7.8, "gender": "H"},
+      {"name": "Isaac Gleeton", "ppm": 0.8589, "pj": 40, "totalPts": 34.36, "gender": "H"},
+      {"name": "Matthew Bilodeau", "ppm": 0.8567, "pj": 21, "totalPts": 17.99, "gender": "H"},
+      {"name": "Jeremie Lanoix", "ppm": 0.8417, "pj": 21, "totalPts": 17.67, "gender": "H"},
+      {"name": "Alexandre Deschenes-Denomme", "ppm": 0.84, "pj": 10, "totalPts": 8.4, "gender": "H"},
+      {"name": "Marc-Antoine Routhier", "ppm": 0.8339, "pj": 46, "totalPts": 38.36, "gender": "H"},
+      {"name": "Jerome Pomerleau", "ppm": 0.8333, "pj": 12, "totalPts": 10.0, "gender": "H"},
+      {"name": "Adam Veillette", "ppm": 0.8152, "pj": 26, "totalPts": 21.19, "gender": "H"},
+      {"name": "Samuel Veillette", "ppm": 0.8125, "pj": 13, "totalPts": 10.56, "gender": "H"},
+      {"name": "Gabriel Lachance", "ppm": 0.8084, "pj": 36, "totalPts": 29.1, "gender": "H"},
+      {"name": "Raphaël côté", "ppm": 0.806, "pj": 8, "totalPts": 6.45, "gender": "H"},
+      {"name": "Richard Michaud", "ppm": 0.8042, "pj": 26, "totalPts": 20.91, "gender": "H"},
+      {"name": "Nicolas Massé", "ppm": 0.8, "pj": 39, "totalPts": 31.2, "gender": "H"},
+      {"name": "Loïc Bigras", "ppm": 0.8, "pj": 10, "totalPts": 8.0, "gender": "H"},
+      {"name": "Mathis Carrignan", "ppm": 0.8, "pj": 10, "totalPts": 8.0, "gender": "H"},
+      {"name": "Pierre Grondin LeBlanc", "ppm": 0.7985, "pj": 31, "totalPts": 24.75, "gender": "H"},
+      {"name": "Guillaume Mercier", "ppm": 0.775, "pj": 24, "totalPts": 18.6, "gender": "H"},
+      {"name": "Noah Garneau", "ppm": 0.773, "pj": 6, "totalPts": 4.64, "gender": "H"},
+      {"name": "Thierry Pratte", "ppm": 0.7525, "pj": 7, "totalPts": 5.27, "gender": "H"},
+      {"name": "Bobby Kistabish-Côté", "ppm": 0.72, "pj": 11, "totalPts": 7.92, "gender": "H"},
+      {"name": "Emerick Leduc", "ppm": 0.7, "pj": 10, "totalPts": 7.0, "gender": "H"},
+      {"name": "Antoine Roy", "ppm": 0.7, "pj": 5, "totalPts": 3.5, "gender": "H"},
+      {"name": "Philippe Lachance", "ppm": 0.7, "pj": 28, "totalPts": 19.6, "gender": "H"},
+      {"name": "Maxime Gagnon", "ppm": 0.6827, "pj": 40, "totalPts": 27.31, "gender": "H"},
+      {"name": "Kevin Larivière", "ppm": 0.6786, "pj": 14, "totalPts": 9.5, "gender": "H"},
+      {"name": "Maxime Tessier", "ppm": 0.6767, "pj": 17, "totalPts": 11.5, "gender": "H"},
+      {"name": "Pier-Olivier Nolet", "ppm": 0.6692, "pj": 26, "totalPts": 17.4, "gender": "H"},
+      {"name": "Sébastien Boucher", "ppm": 0.6537, "pj": 41, "totalPts": 26.8, "gender": "H"},
+      {"name": "Gabriel Pépin", "ppm": 0.6522, "pj": 26, "totalPts": 16.96, "gender": "H"},
+      {"name": "Raphaël Drolet", "ppm": 0.6429, "pj": 14, "totalPts": 9.0, "gender": "H"},
+      {"name": "Isaac Sylvain", "ppm": 0.6429, "pj": 7, "totalPts": 4.5, "gender": "H"},
+      {"name": "Pierrick Naud", "ppm": 0.606, "pj": 26, "totalPts": 15.76, "gender": "H"},
+      {"name": "Frédérick Blais", "ppm": 0.596, "pj": 38, "totalPts": 22.65, "gender": "H"},
+      {"name": "Dylan Poirier Lacelle", "ppm": 0.5909, "pj": 11, "totalPts": 6.5, "gender": "H"},
+      {"name": "Benjamin Deshaies", "ppm": 0.5887, "pj": 13, "totalPts": 7.65, "gender": "H"},
+      {"name": "Maxim Gélinas", "ppm": 0.5858, "pj": 27, "totalPts": 15.82, "gender": "H"},
+      {"name": "Sebastien Fortin", "ppm": 0.5833, "pj": 11, "totalPts": 6.42, "gender": "H"},
+      {"name": "Émille Lantagne", "ppm": 0.5731, "pj": 25, "totalPts": 14.33, "gender": "H"},
+      {"name": "Louis-Philippe Goulet", "ppm": 0.565, "pj": 25, "totalPts": 14.12, "gender": "H"},
+      {"name": "Maxim Fournier", "ppm": 0.557, "pj": 7, "totalPts": 3.9, "gender": "H"},
+      {"name": "Samuel ST-Onge", "ppm": 0.5475, "pj": 14, "totalPts": 7.67, "gender": "H"},
+      {"name": "Xavier Bernard", "ppm": 0.5279, "pj": 25, "totalPts": 13.2, "gender": "H"},
+      {"name": "Youri Lemoine", "ppm": 0.475, "pj": 10, "totalPts": 4.75, "gender": "H"},
+      {"name": "Jérémie Blais", "ppm": 0.4702, "pj": 33, "totalPts": 15.52, "gender": "H"},
+      {"name": "Jeremy Champagne", "ppm": 0.4667, "pj": 15, "totalPts": 7.0, "gender": "H"},
+      {"name": "Adam Blais", "ppm": 0.4522, "pj": 44, "totalPts": 19.9, "gender": "H"},
+      {"name": "Lucas Lefebvre", "ppm": 0.45, "pj": 10, "totalPts": 4.5, "gender": "H"},
+      {"name": "Wesley Otter-Ruperthouse", "ppm": 0.4317, "pj": 23, "totalPts": 9.93, "gender": "H"},
+      {"name": "Zachary Boulanger", "ppm": 0.43, "pj": 19, "totalPts": 8.17, "gender": "H"},
+      {"name": "William Bédard", "ppm": 0.3979, "pj": 11, "totalPts": 4.38, "gender": "H"},
+      {"name": "Guillaume Lantagne", "ppm": 0.3929, "pj": 20, "totalPts": 7.86, "gender": "H"},
+      {"name": "Ryan Larivière", "ppm": 0.3889, "pj": 9, "totalPts": 3.5, "gender": "H"},
+      {"name": "Jacques Blouin", "ppm": 0.364, "pj": 56, "totalPts": 20.39, "gender": "H"},
+      {"name": "Kenny Labrecque", "ppm": 0.353, "pj": 9, "totalPts": 3.18, "gender": "H"},
+      {"name": "Samuel Bolduc", "ppm": 0.35, "pj": 20, "totalPts": 7.0, "gender": "H"},
+      {"name": "Mathieu Cloutier", "ppm": 0.3333, "pj": 6, "totalPts": 2.0, "gender": "H"},
+      {"name": "Jordan Vachon", "ppm": 0.32, "pj": 15, "totalPts": 4.8, "gender": "H"},
+      {"name": "Alexis Radzievski", "ppm": 0.2956, "pj": 35, "totalPts": 10.35, "gender": "H"},
+      {"name": "Cameron Paré", "ppm": 0.2692, "pj": 13, "totalPts": 3.5, "gender": "H"},
+      {"name": "Pier-Luc Marcotte", "ppm": 0.2273, "pj": 11, "totalPts": 2.5, "gender": "H"},
+      {"name": "Jérôme Langlais", "ppm": 0.2155, "pj": 21, "totalPts": 4.52, "gender": "H"},
+      {"name": "Frederic Authier", "ppm": 0.2125, "pj": 26, "totalPts": 5.52, "gender": "H"},
+      {"name": "Dylan Maheux", "ppm": 0.2, "pj": 16, "totalPts": 3.2, "gender": "H"},
+      {"name": "Zachary Morin", "ppm": 0.1865, "pj": 25, "totalPts": 4.66, "gender": "H"},
+      {"name": "David Deshaies", "ppm": 0.1528, "pj": 11, "totalPts": 1.68, "gender": "H"},
+      {"name": "Zachary Cregheur", "ppm": 0.1518, "pj": 21, "totalPts": 3.19, "gender": "H"},
+      {"name": "Samuel Goulet", "ppm": 0.15, "pj": 10, "totalPts": 1.5, "gender": "H"},
+      {"name": "William Picard", "ppm": 0.1, "pj": 15, "totalPts": 1.5, "gender": "H"},
+      {"name": "Bryan Lévesque", "ppm": 0.0568, "pj": 17, "totalPts": 0.97, "gender": "H"},
+      {"name": "Gabriel Pelchat", "ppm": 0.0, "pj": 6, "totalPts": 0.0, "gender": "H"}
+    ],
+    F: [
+      {"name": "Juliann Boire", "ppm": 6.2168, "pj": 41, "totalPts": 254.89, "gender": "F"},
+      {"name": "Jessica Kistabish", "ppm": 5.2625, "pj": 32, "totalPts": 168.4, "gender": "F"},
+      {"name": "Marie-Pier Laverdière", "ppm": 4.1183, "pj": 27, "totalPts": 111.19, "gender": "F"},
+      {"name": "Alyson Blanchette", "ppm": 3.6494, "pj": 35, "totalPts": 127.73, "gender": "F"},
+      {"name": "Roxanne Quesnel", "ppm": 3.4576, "pj": 39, "totalPts": 134.85, "gender": "F"},
+      {"name": "Amy Kistabish-Jerome", "ppm": 3.3046, "pj": 25, "totalPts": 82.61, "gender": "F"},
+      {"name": "Kathleen Kistabish", "ppm": 3.225, "pj": 17, "totalPts": 54.82, "gender": "F"},
+      {"name": "Kanena Kistabish", "ppm": 3.0754, "pj": 42, "totalPts": 129.17, "gender": "F"},
+      {"name": "Marguerite Paquin", "ppm": 2.9579, "pj": 30, "totalPts": 88.74, "gender": "F"},
+      {"name": "Anabelle Massé", "ppm": 2.9458, "pj": 10, "totalPts": 29.46, "gender": "F"},
+      {"name": "Chelsea Ruperthouse-Kistabish", "ppm": 2.8607, "pj": 50, "totalPts": 143.03, "gender": "F"},
+      {"name": "Joanie Alarie", "ppm": 2.709, "pj": 37, "totalPts": 100.23, "gender": "F"},
+      {"name": "Trycia Lacroix", "ppm": 2.6641, "pj": 41, "totalPts": 109.23, "gender": "F"},
+      {"name": "July-Ann De Longchamp", "ppm": 2.6451, "pj": 26, "totalPts": 68.77, "gender": "F"},
+      {"name": "Vanessa Kistabish", "ppm": 2.4267, "pj": 22, "totalPts": 53.39, "gender": "F"},
+      {"name": "Koraly Bolduc", "ppm": 2.383, "pj": 34, "totalPts": 81.02, "gender": "F"},
+      {"name": "Christine Beaumier", "ppm": 2.298, "pj": 40, "totalPts": 91.92, "gender": "F"},
+      {"name": "Gabrielle Brochu", "ppm": 2.1333, "pj": 21, "totalPts": 44.8, "gender": "F"},
+      {"name": "Jenny Ruperthouse", "ppm": 2.0798, "pj": 37, "totalPts": 76.95, "gender": "F"},
+      {"name": "Olivia Kizis Mcdougall", "ppm": 2.0714, "pj": 7, "totalPts": 14.5, "gender": "F"},
+      {"name": "Tanya Nottaway", "ppm": 1.8923, "pj": 28, "totalPts": 52.99, "gender": "F"},
+      {"name": "Audrey Larose", "ppm": 1.8683, "pj": 37, "totalPts": 69.13, "gender": "F"},
+      {"name": "Valérie Alarie", "ppm": 1.8274, "pj": 33, "totalPts": 60.3, "gender": "F"},
+      {"name": "Marie-Ève Barbe", "ppm": 1.7027, "pj": 38, "totalPts": 64.7, "gender": "F"},
+      {"name": "Manon Lafleur", "ppm": 1.6702, "pj": 39, "totalPts": 65.14, "gender": "F"},
+      {"name": "Kyla Polson", "ppm": 1.6616, "pj": 34, "totalPts": 56.49, "gender": "F"},
+      {"name": "Martine Mowatt", "ppm": 1.6429, "pj": 17, "totalPts": 27.93, "gender": "F"},
+      {"name": "Marie-William Brière", "ppm": 1.6365, "pj": 27, "totalPts": 44.19, "gender": "F"},
+      {"name": "Dena Cananasso", "ppm": 1.6309, "pj": 31, "totalPts": 50.56, "gender": "F"},
+      {"name": "Korally Tellier-Soumis", "ppm": 1.5943, "pj": 27, "totalPts": 43.05, "gender": "F"},
+      {"name": "Katie Rouillard", "ppm": 1.5923, "pj": 18, "totalPts": 28.66, "gender": "F"},
+      {"name": "Jade Lavoie", "ppm": 1.5726, "pj": 37, "totalPts": 58.19, "gender": "F"},
+      {"name": "Annabelle Fortin", "ppm": 1.5471, "pj": 44, "totalPts": 68.07, "gender": "F"},
+      {"name": "Lauralee Fortin", "ppm": 1.51, "pj": 29, "totalPts": 43.79, "gender": "F"},
+      {"name": "Marie-Eve Périgny", "ppm": 1.5048, "pj": 28, "totalPts": 42.13, "gender": "F"},
+      {"name": "Tasha Mowatt", "ppm": 1.4375, "pj": 8, "totalPts": 11.5, "gender": "F"},
+      {"name": "Catherine Perigny Fortier", "ppm": 1.4083, "pj": 43, "totalPts": 60.56, "gender": "F"},
+      {"name": "Sylvianne Ruperthouse-Trapper", "ppm": 1.3415, "pj": 28, "totalPts": 37.56, "gender": "F"},
+      {"name": "Sandy Vezeau fortin", "ppm": 1.3333, "pj": 6, "totalPts": 8.0, "gender": "F"},
+      {"name": "Florence Paquin", "ppm": 1.26, "pj": 15, "totalPts": 18.9, "gender": "F"},
+      {"name": "Aurelie Legault", "ppm": 1.24, "pj": 43, "totalPts": 53.32, "gender": "F"},
+      {"name": "Maria Kistabish", "ppm": 1.2222, "pj": 9, "totalPts": 11.0, "gender": "F"},
+      {"name": "Mélika Hamra", "ppm": 1.1748, "pj": 33, "totalPts": 38.77, "gender": "F"},
+      {"name": "Stéphanie Bélanger", "ppm": 1.1667, "pj": 18, "totalPts": 21.0, "gender": "F"},
+      {"name": "Gabrielle Rivest", "ppm": 1.1667, "pj": 6, "totalPts": 7.0, "gender": "F"},
+      {"name": "Donna Sanford", "ppm": 1.1, "pj": 10, "totalPts": 11.0, "gender": "F"},
+      {"name": "Lee ann Boivin", "ppm": 1.089, "pj": 16, "totalPts": 17.42, "gender": "F"},
+      {"name": "Éloïse Brousseau", "ppm": 1.0833, "pj": 6, "totalPts": 6.5, "gender": "F"},
+      {"name": "Joanie Brouillette", "ppm": 1.0714, "pj": 7, "totalPts": 7.5, "gender": "F"},
+      {"name": "Mélodie Pépin", "ppm": 1.0283, "pj": 43, "totalPts": 44.22, "gender": "F"},
+      {"name": "Melina Rivest", "ppm": 1.0246, "pj": 38, "totalPts": 38.94, "gender": "F"},
+      {"name": "Sarah-Ève Pard", "ppm": 1.0184, "pj": 32, "totalPts": 32.59, "gender": "F"},
+      {"name": "Tessa Ève Morin", "ppm": 1.0137, "pj": 39, "totalPts": 39.54, "gender": "F"},
+      {"name": "Jennifer Belzile", "ppm": 0.9964, "pj": 28, "totalPts": 27.9, "gender": "F"},
+      {"name": "Joanie Swallow", "ppm": 0.9286, "pj": 14, "totalPts": 13.0, "gender": "F"},
+      {"name": "Shyna Kistabish", "ppm": 0.9281, "pj": 18, "totalPts": 16.71, "gender": "F"},
+      {"name": "Sandy Carriere", "ppm": 0.9167, "pj": 6, "totalPts": 5.5, "gender": "F"},
+      {"name": "Nathalie Gendron", "ppm": 0.9087, "pj": 16, "totalPts": 14.54, "gender": "F"},
+      {"name": "Janie Carrier", "ppm": 0.8972, "pj": 47, "totalPts": 42.17, "gender": "F"},
+      {"name": "Claude Bouchard", "ppm": 0.8801, "pj": 23, "totalPts": 20.24, "gender": "F"},
+      {"name": "Isabelle Lachance", "ppm": 0.8694, "pj": 31, "totalPts": 26.95, "gender": "F"},
+      {"name": "Carolanne Rousseau", "ppm": 0.865, "pj": 8, "totalPts": 6.92, "gender": "F"},
+      {"name": "Mélissa Bélanger", "ppm": 0.8556, "pj": 31, "totalPts": 26.52, "gender": "F"},
+      {"name": "Catherine Robert-Dubé", "ppm": 0.825, "pj": 21, "totalPts": 17.32, "gender": "F"},
+      {"name": "amélie Thibault", "ppm": 0.825, "pj": 12, "totalPts": 9.9, "gender": "F"},
+      {"name": "Audrey-Pier Diotte", "ppm": 0.8054, "pj": 24, "totalPts": 19.33, "gender": "F"},
+      {"name": "Marilyne Pelchat", "ppm": 0.7784, "pj": 41, "totalPts": 31.92, "gender": "F"},
+      {"name": "Mylene Germain", "ppm": 0.7519, "pj": 17, "totalPts": 12.78, "gender": "F"},
+      {"name": "Andréane Gauthier", "ppm": 0.7501, "pj": 28, "totalPts": 21.0, "gender": "F"},
+      {"name": "Marie-Pascale De Longchamp", "ppm": 0.7437, "pj": 19, "totalPts": 14.13, "gender": "F"},
+      {"name": "Sammy Kistabish", "ppm": 0.7427, "pj": 32, "totalPts": 23.77, "gender": "F"},
+      {"name": "Myriam Lévesque", "ppm": 0.7391, "pj": 16, "totalPts": 11.83, "gender": "F"},
+      {"name": "Sonia Grandmaison", "ppm": 0.6923, "pj": 13, "totalPts": 9.0, "gender": "F"},
+      {"name": "Sarah Cananasso", "ppm": 0.6583, "pj": 19, "totalPts": 12.51, "gender": "F"},
+      {"name": "Marie-Josèphe Chénier", "ppm": 0.637, "pj": 44, "totalPts": 28.03, "gender": "F"},
+      {"name": "Kendra Nottaway", "ppm": 0.625, "pj": 12, "totalPts": 7.5, "gender": "F"},
+      {"name": "Pascale Boire", "ppm": 0.6228, "pj": 30, "totalPts": 18.68, "gender": "F"},
+      {"name": "Jenny-Lee Verville", "ppm": 0.6111, "pj": 9, "totalPts": 5.5, "gender": "F"},
+      {"name": "Cindy Mowatt", "ppm": 0.6, "pj": 5, "totalPts": 3.0, "gender": "F"},
+      {"name": "Valérie Maheux", "ppm": 0.5714, "pj": 14, "totalPts": 8.0, "gender": "F"},
+      {"name": "Alexandra Alain", "ppm": 0.5625, "pj": 16, "totalPts": 9.0, "gender": "F"},
+      {"name": "Nebis Polson Kistabish", "ppm": 0.56, "pj": 29, "totalPts": 16.24, "gender": "F"},
+      {"name": "Stephanie Gamache", "ppm": 0.5577, "pj": 26, "totalPts": 14.5, "gender": "F"},
+      {"name": "Mireille Baribeau", "ppm": 0.5538, "pj": 35, "totalPts": 19.38, "gender": "F"},
+      {"name": "Marilyn Yergeau", "ppm": 0.5493, "pj": 46, "totalPts": 25.27, "gender": "F"},
+      {"name": "Jessie Gervais", "ppm": 0.5446, "pj": 18, "totalPts": 9.8, "gender": "F"},
+      {"name": "Laury Poirier", "ppm": 0.5247, "pj": 7, "totalPts": 3.67, "gender": "F"},
+      {"name": "Sharlene Polson", "ppm": 0.5025, "pj": 9, "totalPts": 4.52, "gender": "F"},
+      {"name": "Maryssa mapachee", "ppm": 0.5, "pj": 9, "totalPts": 4.5, "gender": "F"},
+      {"name": "Sabrina Tremblay", "ppm": 0.4569, "pj": 23, "totalPts": 10.51, "gender": "F"},
+      {"name": "Laurence Boutin", "ppm": 0.4538, "pj": 23, "totalPts": 10.44, "gender": "F"},
+      {"name": "Dania Blais Pard", "ppm": 0.44, "pj": 8, "totalPts": 3.52, "gender": "F"},
+      {"name": "Emy Pomerleau", "ppm": 0.4247, "pj": 42, "totalPts": 17.84, "gender": "F"},
+      {"name": "Audrey-Rose Lantagne", "ppm": 0.4198, "pj": 23, "totalPts": 9.66, "gender": "F"},
+      {"name": "Savannah Swallow", "ppm": 0.4167, "pj": 6, "totalPts": 2.5, "gender": "F"},
+      {"name": "Vanessa Couture", "ppm": 0.3729, "pj": 13, "totalPts": 4.85, "gender": "F"},
+      {"name": "Johnnie McKenzie", "ppm": 0.3626, "pj": 27, "totalPts": 9.79, "gender": "F"},
+      {"name": "Marie-Elaine Gauthier", "ppm": 0.3406, "pj": 34, "totalPts": 11.58, "gender": "F"},
+      {"name": "Mélanie Angers", "ppm": 0.3333, "pj": 12, "totalPts": 4.0, "gender": "F"},
+      {"name": "Roxanne Marion", "ppm": 0.3, "pj": 5, "totalPts": 1.5, "gender": "F"},
+      {"name": "Véronique Thériault", "ppm": 0.2727, "pj": 11, "totalPts": 3.0, "gender": "F"},
+      {"name": "Kary-Ann Lampron-Otis", "ppm": 0.2722, "pj": 26, "totalPts": 7.08, "gender": "F"},
+      {"name": "Andréa Bernier", "ppm": 0.2692, "pj": 13, "totalPts": 3.5, "gender": "F"},
+      {"name": "Valérie Cossette", "ppm": 0.2692, "pj": 13, "totalPts": 3.5, "gender": "F"},
+      {"name": "Marie-Eve Noël", "ppm": 0.2667, "pj": 15, "totalPts": 4.0, "gender": "F"},
+      {"name": "Geneviève Hardy", "ppm": 0.2655, "pj": 24, "totalPts": 6.37, "gender": "F"},
+      {"name": "Kim Mcdougall", "ppm": 0.257, "pj": 8, "totalPts": 2.06, "gender": "F"},
+      {"name": "Stéphanie Dorval", "ppm": 0.2554, "pj": 18, "totalPts": 4.6, "gender": "F"},
+      {"name": "Jannick Breton", "ppm": 0.255, "pj": 16, "totalPts": 4.08, "gender": "F"},
+      {"name": "Noémie Boutin", "ppm": 0.2519, "pj": 23, "totalPts": 5.79, "gender": "F"},
+      {"name": "Emma Lantagne", "ppm": 0.2446, "pj": 38, "totalPts": 9.3, "gender": "F"},
+      {"name": "Roxanne Lavoie", "ppm": 0.2386, "pj": 39, "totalPts": 9.31, "gender": "F"},
+      {"name": "Miriame Bernard", "ppm": 0.2371, "pj": 36, "totalPts": 8.54, "gender": "F"},
+      {"name": "Sabryna Quevillon", "ppm": 0.2363, "pj": 14, "totalPts": 3.31, "gender": "F"},
+      {"name": "Janie Ouellet", "ppm": 0.2325, "pj": 35, "totalPts": 8.14, "gender": "F"},
+      {"name": "Miliana Papatie", "ppm": 0.2143, "pj": 7, "totalPts": 1.5, "gender": "F"},
+      {"name": "Karina Paquin", "ppm": 0.2013, "pj": 28, "totalPts": 5.64, "gender": "F"},
+      {"name": "Carolane Bégin", "ppm": 0.2, "pj": 5, "totalPts": 1.0, "gender": "F"},
+      {"name": "Byanka Audy", "ppm": 0.157, "pj": 8, "totalPts": 1.26, "gender": "F"},
+      {"name": "Line Gagnon", "ppm": 0.1538, "pj": 13, "totalPts": 2.0, "gender": "F"},
+      {"name": "Emilia Cheezo", "ppm": 0.152, "pj": 9, "totalPts": 1.37, "gender": "F"},
+      {"name": "Anne-Marie Landry", "ppm": 0.1325, "pj": 42, "totalPts": 5.57, "gender": "F"},
+      {"name": "Kristine Polson", "ppm": 0.1325, "pj": 19, "totalPts": 2.52, "gender": "F"},
+      {"name": "Johanie Gamache", "ppm": 0.1062, "pj": 37, "totalPts": 3.93, "gender": "F"},
+      {"name": "Caroline Dufour", "ppm": 0.1, "pj": 15, "totalPts": 1.5, "gender": "F"},
+      {"name": "Alexianna Kistabish", "ppm": 0.0901, "pj": 29, "totalPts": 2.61, "gender": "F"},
+      {"name": "Kaylee Cananasso", "ppm": 0.0748, "pj": 25, "totalPts": 1.87, "gender": "F"},
+      {"name": "Patricia Bizier", "ppm": 0.073, "pj": 17, "totalPts": 1.24, "gender": "F"},
+      {"name": "Daphné Gauthier", "ppm": 0.0666, "pj": 24, "totalPts": 1.6, "gender": "F"},
+      {"name": "Geneviève Breton", "ppm": 0.0, "pj": 38, "totalPts": 0.0, "gender": "F"},
+      {"name": "Camille Sirois-Boyer", "ppm": 0.0, "pj": 14, "totalPts": 0.0, "gender": "F"},
+      {"name": "Audrey Beauchemkn", "ppm": 0.0, "pj": 7, "totalPts": 0.0, "gender": "F"},
+      {"name": "Marie-France Ladouceur", "ppm": 0.0, "pj": 6, "totalPts": 0.0, "gender": "F"},
+      {"name": "Emilie Turpin", "ppm": 0.0, "pj": 5, "totalPts": 0.0, "gender": "F"},
+      {"name": "Jessika Gaudreault", "ppm": 0.0, "pj": 15, "totalPts": 0.0, "gender": "F"},
+      {"name": "Julie Sigouin", "ppm": 0.0, "pj": 5, "totalPts": 0.0, "gender": "F"}
+    ]
+  };
+
   // ===== CLASSEMENT FINAL FIGÉ (saison 2026) =====
   // Rang 1-based. Utilisé pour calculer les cotes définitives.
   // Les noms doivent correspondre EXACTEMENT à ceux stockés dans les parties.
@@ -1287,21 +1632,16 @@ window.addEventListener('firebase-ready', () => {
         });
       });
     });
-    return Object.values(map).map(x => {
+    const results2026 = Object.values(map).map(x => {
       const avgRaw = x.gp > 0 ? x.cotePtsRaw / x.gp : 0;
       const avgWeighted = x.gp > 0 ? x.cotePtsWeighted / x.gp : 0;
       const avgMult = x.multCount > 0 ? x.multSum / x.multCount : 1;
-      // Liste des équipes du joueur (pour le menu déroulant)
       const teamList = Array.from(x.teams);
-      // Équipe principale choisie (si définie pour ce joueur)
       const mainTeam = mainTeams[x.key] || null;
-      // Éligibilité: parties du joueur ÷ parties de référence > 25%
       let teamGames = 0;
       if (mainTeam) {
-        // Ratio basé uniquement sur l'équipe principale
         teamGames = teamGameCount[mainTeam.trim().toLowerCase()] || 0;
       } else {
-        // Par défaut: total des parties de toutes ses équipes
         Object.keys(x.playerTeams).forEach(tk => { teamGames += (teamGameCount[tk] || 0); });
       }
       const ratio = teamGames > 0 ? x.gp / teamGames : 0;
@@ -1314,11 +1654,71 @@ window.addEventListener('firebase-ready', () => {
         jerseys: Array.from(x.jerseys).join('/'),
         divisions: Array.from(x.divisions).sort().join('+'),
         avgRaw, avgWeighted, avgMult,
-        teamGames, ratio, eligible,
-        labelRaw: rateLabel(gender === 'F' ? 'F2' : 'H2', avgRaw),
-        labelWeighted: rateLabel(gender === 'F' ? 'F2' : 'H2', avgWeighted)
+        teamGames, ratio, eligible
       };
     });
+
+    // Fusion avec l'historique 2023-2025
+    // Cible: moyenne pondérée par PJ de (PPM historique + PPM 2026 pondéré)
+    const histList = (HISTORICAL_RATINGS && HISTORICAL_RATINGS[gender]) || [];
+    const histMap = {};
+    histList.forEach(h => { histMap[playerKey(h)] = h; });
+    const usedHistKeys = new Set();
+
+    const merged = results2026.map(p => {
+      const h = histMap[p.key];
+      if (!h) {
+        // Pas d'historique: on garde la cote 2026 telle quelle
+        return {
+          ...p,
+          histPPM: null, histPJ: 0,
+          finalPPM: p.avgWeighted,
+          finalPJ: p.gp,
+          histOnly: false,
+          labelRaw: rateLabel(gender === 'F' ? 'F2' : 'H2', p.avgRaw),
+          labelWeighted: rateLabel(gender === 'F' ? 'F2' : 'H2', p.avgWeighted),
+          labelMerged: rateLabel(gender === 'F' ? 'F2' : 'H2', p.avgWeighted)
+        };
+      }
+      usedHistKeys.add(p.key);
+      // Moyenne pondérée: (PPM_hist × PJ_hist + PPM_2026 × PJ_2026) / (PJ_hist + PJ_2026)
+      const totalPJ = h.pj + p.gp;
+      const finalPPM = totalPJ > 0
+        ? (h.ppm * h.pj + p.avgWeighted * p.gp) / totalPJ
+        : 0;
+      return {
+        ...p,
+        histPPM: h.ppm, histPJ: h.pj,
+        finalPPM,
+        finalPJ: totalPJ,
+        histOnly: false,
+        labelRaw: rateLabel(gender === 'F' ? 'F2' : 'H2', p.avgRaw),
+        labelWeighted: rateLabel(gender === 'F' ? 'F2' : 'H2', p.avgWeighted),
+        labelMerged: rateLabel(gender === 'F' ? 'F2' : 'H2', finalPPM)
+      };
+    });
+
+    // Ajouter les joueurs qui n'existent QUE dans l'historique (pas de 2026)
+    histList.forEach(h => {
+      const k = playerKey(h);
+      if (usedHistKeys.has(k)) return;
+      merged.push({
+        key: k, name: h.name, teams: '', teamList: [], mainTeam: null,
+        jerseys: '', divisions: '',
+        gp: 0, g: 0, a: 0,
+        avgRaw: 0, avgWeighted: 0, avgMult: 1,
+        teamGames: 0, ratio: 0, eligible: true, // historique = auto-éligible
+        histPPM: h.ppm, histPJ: h.pj,
+        finalPPM: h.ppm, finalPJ: h.pj,
+        histOnly: true,
+        details: [],
+        labelRaw: rateLabel(gender === 'F' ? 'F2' : 'H2', h.ppm),
+        labelWeighted: rateLabel(gender === 'F' ? 'F2' : 'H2', h.ppm),
+        labelMerged: rateLabel(gender === 'F' ? 'F2' : 'H2', h.ppm)
+      });
+    });
+
+    return merged;
   }
 
   // Renvoie le RANG d'une équipe au classement (1 = premier), ou null
@@ -1342,72 +1742,87 @@ window.addEventListener('firebase-ready', () => {
     const weighted = document.getElementById('rating-weighted').checked;
     const wrap = document.getElementById('rating-table-wrap');
     let players = ratingForGender(gender);
-    // tri: éligibles d'abord, puis selon le mode choisi
+    // Tri principal: par PPM FINALE (fusion historique + 2026) décroissante.
+    // Les non-éligibles vont en bas.
     players.sort((a,b) => {
       if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
-      return weighted
-        ? (b.avgWeighted - a.avgWeighted || b.cotePtsWeighted - a.cotePtsWeighted)
-        : (b.avgRaw - a.avgRaw || b.cotePtsRaw - a.cotePtsRaw);
+      const finalDiff = (b.finalPPM || 0) - (a.finalPPM || 0);
+      if (finalDiff !== 0) return finalDiff;
+      return (b.finalPJ || 0) - (a.finalPJ || 0);
     });
     const cats = gender === 'F' ? ['F2','F3'] : ['H2','H3'];
     const hasStandings = cats.some(c => standingsData[c] && Object.keys(standingsData[c]).length > 0);
     const genderLabel = gender === 'F' ? 'Femmes (F2+F3)' : 'Hommes (H2+H3)';
-    document.getElementById('rating-count').textContent = `${players.length} joueurs · ${genderLabel} · saison complète`;
+    const nb2026 = players.filter(p => !p.histOnly).length;
+    const nbHistOnly = players.filter(p => p.histOnly).length;
+    document.getElementById('rating-count').textContent = `${players.length} joueurs · ${genderLabel} · ${nb2026} en 2026, ${nbHistOnly} historique seul.`;
     if (players.length === 0) {
-      wrap.innerHTML = `<div class="empty-state">Aucune donnée pour ${genderLabel}. Importe des parties d'abord.</div>`;
+      wrap.innerHTML = `<div class="empty-state">Aucune donnée pour ${genderLabel}.</div>`;
       return;
     }
     const d2 = gender === 'F' ? 'F2' : 'H2';
     const d3 = gender === 'F' ? 'F3' : 'H3';
-    let note = `Formule : ${d2} but=2pts aide=1pt · ${d3} but=1pt aide=0,5pt · chaque partie garde sa formule, puis cumul · N/A si le joueur a joué 25% ou moins des parties de son équipe`;
-    if (weighted && !hasStandings) {
-      note += ` · ⚠️ Aucun classement chargé — importe-le pour activer la pondération`;
-    } else if (weighted) {
-      note += ` · Pondéré selon le rang de l'adversaire au classement`;
-    }
+    let note = `Cote finale = moyenne pondérée par PJ de (historique 2023-25 + saison 2026 pondérée). Formule 2026 : ${d2} but=2/aide=1, ${d3} but=1/aide=0,5. N/A si joueur a joué 25% ou moins des parties de son équipe en 2026.`;
+    if (!weighted) note += ` · Case « Pondérer » décochée : 2026 utilise la moyenne brute.`;
     let html = `<div style="font-size:12px; color:#a8a29e; margin-bottom:8px;">${note}</div>`;
-    html += '<div class="table-wrap"><table class="stats-table"><thead><tr><th>#</th><th>Joueur</th><th>Div.</th><th>Équipe</th><th style="text-align:right;">PJ</th><th style="text-align:right;">B</th><th style="text-align:right;">A</th>';
-    if (weighted) {
-      html += '<th style="text-align:right;">Moy. brute</th><th style="text-align:right;">Mult. moy.</th><th style="text-align:right; background:#eff6ff;">Moy. pondérée</th>';
-    } else {
-      html += '<th style="text-align:right; background:#eff6ff;">Moy./match</th>';
-    }
+    html += '<div class="table-wrap"><table class="stats-table"><thead><tr>';
+    html += '<th>#</th><th>Joueur</th><th>Div.</th><th>Équipe</th>';
+    html += '<th style="text-align:right;" title="Parties jouées en 2026">PJ 26</th>';
+    html += '<th style="text-align:right;" title="Moyenne pts/match 2026 (brute ou pondérée selon la case)">PPM 26</th>';
+    html += '<th style="text-align:right; color:#a8a29e;" title="Parties jouées 2023-2025">PJ hist</th>';
+    html += '<th style="text-align:right; color:#a8a29e;" title="Points/match historique">PPM hist</th>';
+    html += '<th style="text-align:right; background:#eff6ff;" title="Points/match fusionné (moyenne pondérée par PJ)">PPM final</th>';
     html += '<th style="text-align:center;">Cote</th></tr></thead><tbody>';
-    const nColumns = weighted ? 11 : 9;
+    const nColumns = 10;
     players.forEach((p, idx) => {
-      const label = weighted ? p.labelWeighted : p.labelRaw;
       const rowId = 'rate_' + idx;
-      const clickable = weighted && hasStandings;
-      // Cellule équipe: menu déroulant si 2+ équipes et admin, sinon texte
+      const clickable = weighted && hasStandings && !p.histOnly && (p.details && p.details.length);
+      // Cellule équipe
       let teamCell;
-      if (isAdmin && p.teamList.length > 1) {
+      if (p.histOnly) {
+        teamCell = `<span style="color:#a8a29e; font-size:12px;" title="Aucune partie en 2026">⌛ Historique</span>`;
+      } else if (isAdmin && p.teamList.length > 1) {
         let opts = `<option value="">Toutes (${p.teamList.length} éq.)</option>`;
         p.teamList.forEach(t => {
           opts += `<option value="${escapeHtml(t)}" ${p.mainTeam === t ? 'selected' : ''}>${escapeHtml(t)}</option>`;
         });
         teamCell = `<select class="main-team-select" data-pkey="${escapeHtml(p.key)}" style="font-size:11px; max-width:160px;" onclick="event.stopPropagation();">${opts}</select>`;
       } else {
-        teamCell = `<span style="color:#78716c; font-size:12px;">${escapeHtml(p.mainTeam || p.teams)}${p.mainTeam && p.teamList.length > 1 ? ' <span style="color:#a8a29e;">(prin.)</span>' : ''}</span>`;
+        teamCell = `<span style="color:#78716c; font-size:12px;">${escapeHtml(p.mainTeam || p.teams || '—')}${p.mainTeam && p.teamList.length > 1 ? ' <span style="color:#a8a29e;">(prin.)</span>' : ''}</span>`;
       }
-      html += `<tr ${clickable ? `style="cursor:pointer;" data-detail="${rowId}"` : ''}><td style="color:#78716c;">${idx+1}</td><td>${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td><td style="font-size:11px; color:#78716c;">${escapeHtml(p.divisions)}</td><td>${teamCell}</td><td style="text-align:right;">${p.gp}</td><td style="text-align:right;">${p.g}</td><td style="text-align:right;">${p.a}</td>`;
-      if (weighted) {
-        const arrow = clickable ? '<span style="color:#2563eb; font-size:10px;">▶</span> ' : '';
-        html += `<td style="text-align:right; color:#a8a29e;">${p.avgRaw.toFixed(2)}</td><td style="text-align:right; color:#a8a29e;">${arrow}×${p.avgMult.toFixed(2)}</td><td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avgWeighted.toFixed(2)}</td>`;
+      // Cellule cote
+      let coteCell;
+      if (p.histOnly) {
+        coteCell = `<span class="rating-badge rating-${p.labelMerged}">${p.labelMerged}</span>`;
+      } else if (!p.eligible) {
+        coteCell = `<span class="rating-badge" style="background:#f5f5f4; color:#a8a29e;" title="${p.gp}/${p.teamGames} parties de l'équipe (${(p.ratio*100).toFixed(0)}%) — min. plus de 25%">N/A</span>`;
       } else {
-        html += `<td style="text-align:right; font-weight:600; background:#eff6ff;">${p.avgRaw.toFixed(2)}</td>`;
+        coteCell = `<span class="rating-badge rating-${p.labelMerged}">${p.labelMerged}</span>`;
       }
-      const coteCell = p.eligible
-        ? `<span class="rating-badge rating-${label}">${label}</span>`
-        : `<span class="rating-badge" style="background:#f5f5f4; color:#a8a29e;" title="${p.gp}/${p.teamGames} parties de l'équipe (${(p.ratio*100).toFixed(0)}%) — min. plus de 25%">N/A</span>`;
+      // PPM 26 (brute ou pondérée selon la case)
+      const ppm26 = weighted ? p.avgWeighted : p.avgRaw;
+      const ppm26Str = p.histOnly ? '—' : (p.gp > 0 ? ppm26.toFixed(2) : '—');
+      const pj26Str = p.histOnly ? '—' : String(p.gp);
+      const arrow = clickable ? '<span style="color:#2563eb; font-size:10px;">▶</span> ' : '';
+      html += `<tr ${clickable ? `style="cursor:pointer;" data-detail="${rowId}"` : ''}>`;
+      html += `<td style="color:#78716c;">${idx+1}</td>`;
+      html += `<td>${p.histOnly ? '<span title="Historique seulement" style="color:#a8a29e;">⌛ </span>' : ''}${escapeHtml(p.name)}${p.jerseys ? ` <span style="color:#a8a29e; font-size:11px;">#${escapeHtml(p.jerseys)}</span>` : ''}</td>`;
+      html += `<td style="font-size:11px; color:#78716c;">${escapeHtml(p.divisions || '—')}</td>`;
+      html += `<td>${teamCell}</td>`;
+      html += `<td style="text-align:right;">${arrow}${pj26Str}</td>`;
+      html += `<td style="text-align:right;">${ppm26Str}</td>`;
+      html += `<td style="text-align:right; color:#a8a29e;">${p.histPJ > 0 ? p.histPJ : '—'}</td>`;
+      html += `<td style="text-align:right; color:#a8a29e;">${p.histPJ > 0 ? p.histPPM.toFixed(2) : '—'}</td>`;
+      html += `<td style="text-align:right; font-weight:600; background:#eff6ff;">${p.finalPJ > 0 ? p.finalPPM.toFixed(2) : '—'}<div style="font-size:10px; color:#a8a29e; font-weight:400;">${p.finalPJ} PJ</div></td>`;
       html += `<td style="text-align:center;">${coteCell}</td></tr>`;
-      // Ligne de détail (cachée par défaut)
+      // Ligne de détail (cachée)
       if (clickable) {
         let detailHtml = `<tr id="${rowId}" style="display:none;"><td colspan="${nColumns}" style="background:#fafaf9; padding:0;">`;
-        detailHtml += `<div style="padding:10px 16px;"><div style="font-size:11px; color:#78716c; margin-bottom:6px;">Détail des ${p.details.length} partie(s) — chaque match pondéré par la force de l'adversaire :</div>`;
+        detailHtml += `<div style="padding:10px 16px;"><div style="font-size:11px; color:#78716c; margin-bottom:6px;">Détail des ${p.details.length} partie(s) 2026 — chaque match pondéré par la force de l'adversaire :</div>`;
         detailHtml += `<table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:#a8a29e;"><th style="text-align:left; padding:3px 6px;">Sem.</th><th style="text-align:left; padding:3px 6px;">Div.</th><th style="text-align:left; padding:3px 6px;">Adversaire</th><th style="text-align:right; padding:3px 6px;">Rang adv.</th><th style="text-align:right; padding:3px 6px;">B</th><th style="text-align:right; padding:3px 6px;">A</th><th style="text-align:right; padding:3px 6px;">Pts cote</th><th style="text-align:right; padding:3px 6px;">Mult.</th><th style="text-align:right; padding:3px 6px;">Pts pondérés</th></tr></thead><tbody>`;
         p.details.forEach(d => {
-          const oppPtsStr = d.oppRank === null ? '—' : (d.oppRank === 1 ? '1er' : d.oppRank + 'e');
-          detailHtml += `<tr><td style="padding:3px 6px;">S${d.week}</td><td style="padding:3px 6px; color:#78716c;">${d.div}</td><td style="padding:3px 6px;">${escapeHtml(d.opp || '?')}</td><td style="text-align:right; padding:3px 6px; color:#78716c;">${oppPtsStr}</td><td style="text-align:right; padding:3px 6px;">${d.g}</td><td style="text-align:right; padding:3px 6px;">${d.a}</td><td style="text-align:right; padding:3px 6px;">${d.ptsRaw % 1 === 0 ? d.ptsRaw : d.ptsRaw.toFixed(1)}</td><td style="text-align:right; padding:3px 6px; font-weight:500; color:${d.mult > 1 ? '#166534' : d.mult < 1 ? '#991b1b' : '#57534e'};">×${d.mult.toFixed(2)}</td><td style="text-align:right; padding:3px 6px; font-weight:600;">${d.ptsWeighted.toFixed(1)}</td></tr>`;
+          const oppStr = d.oppRank === null ? '—' : (d.oppRank === 1 ? '1er' : d.oppRank + 'e');
+          detailHtml += `<tr><td style="padding:3px 6px;">S${d.week}</td><td style="padding:3px 6px; color:#78716c;">${d.div}</td><td style="padding:3px 6px;">${escapeHtml(d.opp || '?')}</td><td style="text-align:right; padding:3px 6px; color:#78716c;">${oppStr}</td><td style="text-align:right; padding:3px 6px;">${d.g}</td><td style="text-align:right; padding:3px 6px;">${d.a}</td><td style="text-align:right; padding:3px 6px;">${d.ptsRaw % 1 === 0 ? d.ptsRaw : d.ptsRaw.toFixed(1)}</td><td style="text-align:right; padding:3px 6px; font-weight:500; color:${d.mult > 1 ? '#166534' : d.mult < 1 ? '#991b1b' : '#57534e'};">×${d.mult.toFixed(2)}</td><td style="text-align:right; padding:3px 6px; font-weight:600;">${d.ptsWeighted.toFixed(1)}</td></tr>`;
         });
         detailHtml += `</tbody></table></div></td></tr>`;
         html += detailHtml;
