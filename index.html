@@ -710,7 +710,6 @@ window.addEventListener('firebase-ready', () => {
       {"name": "François Lemieux", "ppm": 1.7446, "pj": 26, "totalPts": 45.36, "gender": "H"},
       {"name": "Philippe Dufour", "ppm": 1.7098, "pj": 30, "totalPts": 51.29, "gender": "H"},
       {"name": "Marc-André Plante", "ppm": 1.6808, "pj": 38, "totalPts": 63.87, "gender": "H"},
-      {"name": "Sébastien Vezeau-Fortin", "ppm": 1.6744, "pj": 19, "totalPts": 31.81, "gender": "H"},
       {"name": "Fédérick Lacroix", "ppm": 1.6591, "pj": 21, "totalPts": 34.84, "gender": "H"},
       {"name": "Emanuel Goyette", "ppm": 1.6429, "pj": 14, "totalPts": 23.0, "gender": "H"},
       {"name": "Jean-François Quesnel", "ppm": 1.6275, "pj": 39, "totalPts": 63.47, "gender": "H"},
@@ -808,7 +807,7 @@ window.addEventListener('firebase-ready', () => {
       {"name": "Dylan Poirier Lacelle", "ppm": 0.5909, "pj": 11, "totalPts": 6.5, "gender": "H"},
       {"name": "Benjamin Deshaies", "ppm": 0.5887, "pj": 13, "totalPts": 7.65, "gender": "H"},
       {"name": "Maxim Gélinas", "ppm": 0.5858, "pj": 27, "totalPts": 15.82, "gender": "H"},
-      {"name": "Sebastien Fortin", "ppm": 0.5833, "pj": 11, "totalPts": 6.42, "gender": "H"},
+      {"name": "Sebastien Fortin", "ppm": 1.2743, "pj": 30, "totalPts": 38.23, "gender": "H"},
       {"name": "Émille Lantagne", "ppm": 0.5731, "pj": 25, "totalPts": 14.33, "gender": "H"},
       {"name": "Louis-Philippe Goulet", "ppm": 0.565, "pj": 25, "totalPts": 14.12, "gender": "H"},
       {"name": "Maxim Fournier", "ppm": 0.557, "pj": 7, "totalPts": 3.9, "gender": "H"},
@@ -1100,7 +1099,78 @@ window.addEventListener('firebase-ready', () => {
   function escapeHtml(s) {
     return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   }
-  function playerKey(p) { return (p.name || '').trim().toLowerCase(); }
+  // Alias joueurs: nom rencontré → nom canonique. La clé (lowercase trim) mappe vers la clé canonique.
+  // Utile quand un joueur a plusieurs orthographes (ex: Sébastien Vezeau-Fortin = Sebastien Fortin).
+  const PLAYER_ALIASES = {
+    // Sébastien Fortin (fusion historique)
+    'sébastien vezeau-fortin': 'sebastien fortin',
+    'sebastien vezeau-fortin': 'sebastien fortin',
+    'sébastien fortin': 'sebastien fortin',
+    // Steeve Bourgelas-Nicol
+    'steve bourgelas-nicol': 'steeve bourgelas-nicol',
+    'steve bourgelas': 'steeve bourgelas-nicol',
+    'steeve bourgelas': 'steeve bourgelas-nicol',
+    // Étienne Turcotte (avec/sans accent)
+    'etienne turcotte': 'étienne turcotte',
+    // Émile St-Pierre
+    'emile st-pierre': 'émile st-pierre',
+    // Jérémy Jarret
+    'jeremy jarret': 'jérémy jarret',
+    // Daniel Vandal-coute
+    'daniel vandal': 'daniel vandal-coute',
+    // Mathieu Roy 1 = Mathieu Roy historique
+    'mathieu roy 1': 'mathieu roy',
+    // Jean-François Quesnel
+    'jf quesnel': 'jean-françois quesnel',
+    'jean-francois quesnel': 'jean-françois quesnel',
+    // Micheal Nadon (orthographe unique dans l'historique)
+    'michael nadon': 'micheal nadon',
+    // Cedric Lantagne (sans accent dans l'historique)
+    'cédric lantagne': 'cedric lantagne',
+    // Eliot Côté (accent dans l'historique)
+    'eliot cote': 'eliot côté',
+    // Matthew Morin (historique avec deux t)
+    'mathew morin': 'matthew morin',
+    // Michäel Shink (accent particulier dans l'historique)
+    'michael shink': 'michäel shink',
+    // Jordan Kistabishh (avec 2 h dans l'historique)
+    'jordan kistabish': 'jordan kistabishh',
+    // Mathis Carrignan (avec 2 r dans l'historique)
+    'mathis carignan': 'mathis carrignan',
+    // Kevin Larivière (accent dans l'historique)
+    'kevin lariviere': 'kevin larivière',
+    // Émille Lantagne (avec 2 l dans l'historique)
+    'emile lantagne': 'émille lantagne',
+    'émile lantagne': 'émille lantagne',
+    // Jérémie Blais
+    'jeremie blais': 'jérémie blais',
+    // Ryan Larivière
+    'ryan lariviere': 'ryan larivière',
+    // Jacques Blouin = Jack Blouin
+    'jack blouin': 'jacques blouin',
+    // Frederic Authier (sans accent dans l'historique)
+    'frédéric authier': 'frederic authier',
+    // ===== JOUEUSES =====
+    // Olivia Kizis Mcdougall
+    'olivia mcdougal': 'olivia kizis mcdougall',
+    'olivia mcdougall': 'olivia kizis mcdougall',
+    // Sylvianne Ruperthouse-Trapper
+    'sylvianne ruperthouse': 'sylvianne ruperthouse-trapper',
+    // Aurélie Legault (accent dans SportNinja, sans accent dans l'historique)
+    'aurélie legault': 'aurelie legault',
+    // Mylène Germain (accent dans SportNinja, sans accent dans l'historique)
+    'mylène germain': 'mylene germain',
+    // Dania Blais Pard
+    'dania pard': 'dania blais pard',
+    // Mélanie Angers
+    'melanie angers': 'mélanie angers',
+    // Audrey Beauchemin (typo dans l'historique: Beauchemkn)
+    'audrey beauchemin': 'audrey beauchemkn'
+  };
+  function playerKey(p) {
+    const raw = (p.name || '').trim().toLowerCase();
+    return PLAYER_ALIASES[raw] || raw;
+  }
   function getWeek(w) {
     if (!weeksData[w]) weeksData[w] = { games: [], selections: {}, goalieSelections: {} };
     if (!weeksData[w].goalieSelections) weeksData[w].goalieSelections = {};
