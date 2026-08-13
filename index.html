@@ -1755,11 +1755,19 @@ window.addEventListener('firebase-ready', () => {
         };
       }
       usedHistKeys.add(p.key);
-      // Moyenne pondérée: (PPM_hist × PJ_hist + PPM_2026 × PJ_2026) / (PJ_hist + PJ_2026)
+      // Formule hybride pour fusionner l'historique avec 2026:
+      // - Si le joueur a PLUS DE 4 matchs en 2026 → pondération fixe 60% 2026 + 40% historique
+      //   (échantillon 2026 assez solide pour un poids fort et fixe)
+      // - Sinon → moyenne pondérée par PJ (échantillon 2026 trop petit pour un poids fixe élevé)
       const totalPJ = h.pj + p.gp;
-      const finalPPM = totalPJ > 0
-        ? (h.ppm * h.pj + p.avgWeighted * p.gp) / totalPJ
-        : 0;
+      let finalPPM;
+      if (p.gp > 4) {
+        finalPPM = 0.60 * p.avgWeighted + 0.40 * h.ppm;
+      } else if (totalPJ > 0) {
+        finalPPM = (h.ppm * h.pj + p.avgWeighted * p.gp) / totalPJ;
+      } else {
+        finalPPM = 0;
+      }
       // Règle: éligible si ratio 2026 > 25% OU si total cumulé > 5 PJ
       const eligible = p.eligible || totalPJ > 5;
       return {
@@ -1839,7 +1847,7 @@ window.addEventListener('firebase-ready', () => {
     }
     const d2 = gender === 'F' ? 'F2' : 'H2';
     const d3 = gender === 'F' ? 'F3' : 'H3';
-    let note = `Cote finale = moyenne pondérée par PJ de (historique 2023-25 + saison 2026 pondérée). Formule 2026 : ${d2} but=2/aide=1, ${d3} but=1/aide=0,5. N/A si joueur a joué 25% ou moins des parties de son équipe en 2026.`;
+    let note = `Cote finale : si plus de 4 PJ en 2026 → 60% (2026 pondéré) + 40% (historique 23-25). Sinon → moyenne pondérée par PJ. Formule 2026 : ${d2} but=2/aide=1, ${d3} but=1/aide=0,5. N/A si <25% des parties de l'équipe en 2026 ET moins de 6 PJ cumulés.`;
     if (!weighted) note += ` · Case « Pondérer » décochée : 2026 utilise la moyenne brute.`;
     let html = `<div style="font-size:12px; color:#a8a29e; margin-bottom:8px;">${note}</div>`;
     html += '<div class="table-wrap"><table class="stats-table"><thead><tr>';
