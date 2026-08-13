@@ -1739,11 +1739,15 @@ window.addEventListener('firebase-ready', () => {
       const h = histMap[p.key];
       if (!h) {
         // Pas d'historique: on garde la cote 2026 telle quelle
+        // Règle: éligible si ratio > 25% OU si total PJ > 5
+        const finalPJ = p.gp;
+        const eligible = p.eligible || finalPJ > 5;
         return {
           ...p,
+          eligible,
           histPPM: null, histPJ: 0,
           finalPPM: p.avgWeighted,
-          finalPJ: p.gp,
+          finalPJ,
           histOnly: false,
           labelRaw: rateLabel(gender === 'F' ? 'F2' : 'H2', p.avgRaw),
           labelWeighted: rateLabel(gender === 'F' ? 'F2' : 'H2', p.avgWeighted),
@@ -1756,8 +1760,11 @@ window.addEventListener('firebase-ready', () => {
       const finalPPM = totalPJ > 0
         ? (h.ppm * h.pj + p.avgWeighted * p.gp) / totalPJ
         : 0;
+      // Règle: éligible si ratio 2026 > 25% OU si total cumulé > 5 PJ
+      const eligible = p.eligible || totalPJ > 5;
       return {
         ...p,
+        eligible,
         histPPM: h.ppm, histPJ: h.pj,
         finalPPM,
         finalPJ: totalPJ,
