@@ -1646,8 +1646,8 @@ window.addEventListener('firebase-ready', () => {
   function rateLabel(cat, avgPerGame) {
     const isFemme = (cat === 'F2' || cat === 'F3');
     if (isFemme) {
-      if (avgPerGame > 4) return 'F1';
-      if (avgPerGame >= 2) return 'F2';
+      if (avgPerGame > 3) return 'F1';
+      if (avgPerGame >= 1.5) return 'F2';
       return 'F3';
     } else {
       if (avgPerGame > 4) return 'H1';
